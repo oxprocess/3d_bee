@@ -42,7 +42,7 @@ kbd { font: 12px var(--dbb-mono); padding: 0 5px; border-radius: 4px; box-shadow
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); max-width: 1560px; margin: 0 auto; }
 .chapters { padding: 0 clamp(16px, 4vw, 64px) 12vh; min-width: 0; }
 .stage-col { position: relative; min-width: 0; }
-.stage-wrap { position: sticky; top: 0; height: 100vh; height: 100svh; }
+.stage-wrap { position: sticky; top: env(safe-area-inset-top, 0px); height: 100vh; height: calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
 #stage { position: absolute; inset: 0; }
 .stage-bar {
   position: absolute; left: 0; right: 0; top: 0; z-index: 4;
@@ -138,7 +138,7 @@ table.compact td:first-child { white-space: normal; }
 @media (max-width: 960px) {
   .top { position: relative; width: 100%; padding-bottom: 6px; }
   .layout { grid-template-columns: 1fr; }
-  .stage-col { order: -1; position: sticky; top: 0; z-index: 5; height: 50vh; height: 50svh; background: var(--dbb-mist-1); box-shadow: 0 12px 24px -18px rgba(60, 40, 110, 0.35); }
+  .stage-col { order: -1; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; height: 50vh; height: 50svh; background: var(--dbb-mist-1); box-shadow: 0 12px 24px -18px rgba(60, 40, 110, 0.35); }
   .stage-wrap { position: relative; height: 100%; }
   .stage-bar { padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 0; }
   #stage { top: calc(44px + env(safe-area-inset-top, 0px)); }

@@ -63,6 +63,25 @@
 /* 组件里用 hidden 属性开关显示；这条保证它不被 display 规则盖掉 */
 [hidden] { display: none !important; }
 
+/* ── 色彩方向：两个深色方向在舞台里用自己的夜色，不管页面是浅色还是深色 ── */
+.dbb-stage[data-look="aurora"] {
+  color-scheme: dark;
+  --dbb-scene-bg: #0B0A1C;
+  --dbb-ink: #EEE9F6; --dbb-body: #C6BFD8; --dbb-soft: #9A92B0; --dbb-violet: #B9A6FF; --dbb-mint: #7FE3D2;
+  --dbb-line: rgba(185, 166, 255, 0.24); --dbb-card: rgba(26, 22, 52, 0.72); --dbb-card-solid: #1A1634;
+  background: radial-gradient(ellipse 70% 55% at 50% 38%, #1D1845 0%, #0E0C24 55%, #07060F 100%);
+}
+.dbb-stage[data-look="expanse"] {
+  color-scheme: dark;
+  --dbb-scene-bg: #0A0F14;
+  --dbb-ink: #E6EDF1; --dbb-body: #B7C3CA; --dbb-soft: #7F8E98; --dbb-violet: #E8A33D; --dbb-mint: #3FC1C9;
+  --dbb-line: rgba(63, 193, 201, 0.22); --dbb-card: rgba(12, 20, 26, 0.78); --dbb-card-solid: #0F171D;
+  --dbb-serif: "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+  background: linear-gradient(180deg, #05070A 0%, #0A0F14 58%, #10171E 100%);
+}
+.dbb-stage[data-look="expanse"] .dbb-dir,
+.dbb-stage[data-look="expanse"] .dbb-caption { font-family: var(--dbb-mono); letter-spacing: 0.02em; border-radius: 4px; }
+
 /* ── 3D 舞台 ── */
 .dbb-stage {
   position: relative;
@@ -237,3 +256,9 @@ dbb-data-lens[on] { display: block; }
 .dbb-lens-item code { font: 10.5px/1.3 var(--dbb-mono); color: var(--dbb-violet); overflow-wrap: anywhere; }
 @media (max-width: 560px) { .dbb-lens-item code { font-size: 9.5px; } }
 @media (prefers-reduced-motion: reduce) { .dbb-rail button i, .dbb-tl-dot i, .dbb-tick i { transition: none; } }
+
+/* 色彩方向的小样 */
+.dbb-sw { width: 30px; height: 30px; border-radius: 50%; display: block; flex: none; }
+.dbb-sw-lit { background: radial-gradient(circle at 36% 32%, #fff 0 12%, #F2DDE6 34%, #D9CFEF 62%, #B9B2E6 100%); box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #9FDCC6; }
+.dbb-sw-aurora { background: radial-gradient(circle at 40% 36%, #F4F0FF 0 16%, #7E78B8 60%, #2A2358 100%); box-shadow: 0 0 10px 1px #8D5BFF, 0 0 0 2px #FF5EB8; }
+.dbb-sw-expanse { background: radial-gradient(circle at 26% 34%, #FFF1DC 0 6%, #CDB597 20%, #6B5B48 48%, #0B0F14 70%); box-shadow: 0 0 0 1.5px #3FC1C9; }

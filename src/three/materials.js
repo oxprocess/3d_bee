@@ -78,8 +78,25 @@ export function nacreShared() {
     uBaseGlow: { value: 0 },
     uSwirlSeed: { value: 0 },
     uPulse: { value: 0 },
+    // 极光：沿轮廓流动的彩色辉光。强度与颜色由色彩方向和事件决定
+    uAurora: { value: 0 },
+    uAurCols: { value: ['#3FA9FF', '#8D5BFF', '#FF5EB8', '#FF9F43'].map((c) => new THREE.Color(c)) },
+    uAurTime: { value: 0 },
   };
 }
+
+// 四个颜色首尾相接的循环渐变（极光的颜色带）
+export const AURORA_GLSL = /* glsl */ `
+uniform vec3 uAurCols[4];
+vec3 dbbAurora(float f) {
+  f = fract(f) * 4.0;
+  float i = floor(f);
+  float t = smoothstep(0.0, 1.0, fract(f));
+  vec3 a = i < 1.0 ? uAurCols[0] : i < 2.0 ? uAurCols[1] : i < 3.0 ? uAurCols[2] : uAurCols[3];
+  vec3 b = i < 1.0 ? uAurCols[1] : i < 2.0 ? uAurCols[2] : i < 3.0 ? uAurCols[3] : uAurCols[0];
+  return mix(a, b, t);
+}
+`;
 
 // 珍珠母：物理材质 + 虹彩厚度随表面缓慢起伏（每颗的纹路都不一样）
 export function createNacre({
@@ -144,12 +161,16 @@ uniform float uGlow; uniform vec3 uGlowColor; uniform vec3 uWarmPos; uniform flo
 uniform float uSweepY; uniform float uSweepAmt; uniform float uBaseGlow; uniform float uSwirlSeed; uniform float uPulse;
 uniform float uDissolve; uniform float uDisR; uniform vec3 uEdgeColor; uniform float uFadeTop; uniform float uFadeBottom; uniform float uAlpha;
 uniform vec3 uTint; uniform float uTintAmt; uniform float uGrow; uniform vec3 uGrowColor;
-${NOISE_GLSL}`,
+uniform float uAurora; uniform float uAurTime;
+${NOISE_GLSL}
+${AURORA_GLSL}`,
       )
       .replace(
         '#include <clipping_planes_fragment>',
         `#include <clipping_planes_fragment>
 float dbbEdge = 0.0;
+vec3 dbbAurCol = vec3(0.0);
+float dbbAurAmt = 0.0;
 #ifdef DBB_DISSOLVE
   if (uDissolve > 0.0) {
     // 从剖面那道边开始化开，像把一层轻轻揭下来
@@ -183,6 +204,16 @@ float dbbEdge = 0.0;
   totalEmissiveRadiance += uGlowColor * uPulse * (0.35 + 0.65 * rim) * 0.5;
   totalEmissiveRadiance += uGrowColor * uGrow * (0.45 + 0.55 * rim);
   totalEmissiveRadiance += uEdgeColor * dbbEdge * 2.2;
+  if (uAurora > 0.001) {
+    // 沿轮廓流动：角度决定颜色，缓慢转动，再加一点噪声让它像光幕而不是色环
+    float ang = atan(nV.y, nV.x) / 6.28318;
+    float flow = ang + uAurTime * 0.05 + dbb_snoise(vec3(vDbbLocal.xy * 1.3, uAurTime * 0.12)) * 0.16;
+    dbbAurCol = dbbAurora(flow);
+    float band = pow(rim, 1.3);
+    totalEmissiveRadiance += dbbAurCol * uAurora * (band * 1.7 + 0.1);
+    // 浅色背景上光是加不出来的：同时把轮廓染上极光的颜色
+    dbbAurAmt = clamp(uAurora * band * 1.1, 0.0, 0.8);
+  }
 }`,
       )
       .replace(
@@ -201,6 +232,7 @@ float dbbEdge = 0.0;
         `#ifdef DBB_FADE
   diffuseColor.a *= uAlpha * smoothstep(uFadeBottom, uFadeTop, vDbbWorld.y);
 #endif
+outgoingLight = mix(outgoingLight, dbbAurCol * 1.05, dbbAurAmt);
 #include <opaque_fragment>`,
       );
   };
@@ -242,6 +274,7 @@ uniform vec3 uKey;
 uniform vec3 uBg;
 uniform vec3 uCoreGlow;
 uniform float uTime;
+uniform float uDiffMin;
 varying float vLayer;
 varying float vS;
 varying vec3 vWorldPos;
@@ -281,7 +314,7 @@ void main() {
   // 抛光的切面：漫反射 + 一道斜向的光带
   vec3 N = normalize(vNormalW);
   vec3 V = normalize(uCamPos - vWorldPos);
-  float diff = 0.8 + 0.2 * max(dot(N, uKey), 0.0);
+  float diff = uDiffMin + (1.0 - uDiffMin) * max(dot(N, uKey), 0.0);
   vec3 R = reflect(-V, N);
   float spec = pow(max(dot(R, uKey), 0.0), 24.0) * 0.28;
   float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0) * 0.12;
@@ -327,6 +360,7 @@ export function createCapMaterial(side = THREE.FrontSide) {
       uBg: { value: new THREE.Color('#F3EDF7') },
       uCoreGlow: { value: new THREE.Color('#ffffff') },
       uTime: { value: 0 },
+      uDiffMin: { value: 0.8 },
     },
     vertexShader: CAP_VS,
     fragmentShader: CAP_FS,
@@ -497,8 +531,10 @@ uniform float uAmt;
 uniform float uTime;
 uniform float uRise;
 uniform vec3 uColor;
+uniform float uAurMix;
 varying vec2 vUv;
 ${NOISE_GLSL}
+${AURORA_GLSL}
 void main() {
   float x = (vUv.x - 0.5) * 2.0;
   float y = vUv.y;
@@ -507,8 +543,13 @@ void main() {
   float head = 1.0 - smoothstep(uRise - 0.1, uRise + 0.02, y);
   float ends = smoothstep(0.0, 0.08, y) * (1.0 - smoothstep(0.82, 1.0, y) * 0.6);
   float streak = 0.8 + 0.2 * dbb_snoise(vec3(x * 3.0, y * 4.0 - uTime * 1.4, uTime * 0.25));
-  float a = uAmt * (core + halo) * head * ends * streak;
-  gl_FragColor = vec4(uColor, clamp(a, 0.0, 0.85));
+  // 极光幕：竖直的光褶，颜色沿横向和高度缓慢流动
+  float fold = 0.55 + 0.45 * dbb_snoise(vec3(x * 7.0, y * 1.2 - uTime * 0.5, uTime * 0.15));
+  float curtain = exp(-x * x / 0.6) * fold;
+  vec3 col = mix(uColor, dbbAurora(vUv.x * 0.7 + y * 0.35 + uTime * 0.06), uAurMix);
+  float body = mix(core + halo, curtain + core * 0.5, uAurMix);
+  float a = uAmt * body * head * ends * streak;
+  gl_FragColor = vec4(col, clamp(a, 0.0, 0.85));
   #include <colorspace_fragment>
 }`;
 
@@ -522,6 +563,8 @@ export function createColumnMaterial() {
       uTime: { value: 0 },
       uRise: { value: 0 },
       uColor: { value: new THREE.Color('#F4FFFA') },
+      uAurMix: { value: 0 },
+      uAurCols: { value: ['#3FA9FF', '#8D5BFF', '#FF5EB8', '#FF9F43'].map((c) => new THREE.Color(c)) },
     },
     vertexShader: COLUMN_VS,
     fragmentShader: COLUMN_FS,
@@ -616,6 +659,44 @@ export function createDropMaterial(tint) {
     },
     vertexShader: DROP_VS,
     fragmentShader: DROP_FS,
+  });
+}
+
+// 光晕：珍珠身后一圈流动的彩色辉光（Apple Intelligence 式色彩方向用）
+const HALO_VS = /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+const HALO_FS = /* glsl */ `
+uniform float uAmt;
+uniform float uTime;
+varying vec2 vUv;
+${NOISE_GLSL}
+${AURORA_GLSL}
+void main() {
+  vec2 p = vUv * 2.0 - 1.0;
+  float r = length(p);
+  float ang = atan(p.y, p.x) / 6.28318;
+  float wob = dbb_snoise(vec3(p * 1.6, uTime * 0.2)) * 0.06;
+  float ring = exp(-pow((r - 0.62 - wob) / 0.2, 2.0));
+  float inner = exp(-pow(r / 0.62, 2.0)) * 0.18;
+  vec3 c = dbbAurora(ang + uTime * 0.05 + wob);
+  float a = uAmt * (ring + inner) * (1.0 - smoothstep(0.86, 1.0, r));
+  gl_FragColor = vec4(c * a, a);
+  #include <colorspace_fragment>
+}`;
+
+export function createHaloMaterial(shared) {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    uniforms: { uAmt: { value: 0 }, uTime: { value: 0 }, uAurCols: shared.uAurCols },
+    vertexShader: HALO_VS,
+    fragmentShader: HALO_FS,
   });
 }
 

@@ -11,7 +11,7 @@
 
 怎么碰它：拖动转动 · 双指张开 / Ctrl + 滚轮往里挖一层 · 轻点选中一代、一次 · 长按数一数 · 双击复位。键盘：←→↑↓ · + − · Enter · C · Esc。
 
-完整的规则、公式和接口在 [`docs/spec.md`](docs/spec.md)。
+完整的规则、公式和接口在 [`docs/spec.md`](docs/spec.md)。三个色彩方向（Apple Intelligence 式极光、The Expanse 式、推荐的“被经历点亮”）的对比图：[`docs/color-directions.jpg`](docs/color-directions.jpg)，在实验台左侧可以切换。
 
 ## 结构
 

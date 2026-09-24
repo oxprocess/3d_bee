@@ -53,3 +53,15 @@ export function lighten(hex, amount) {
   const [h, s, l] = rgbToHsl(hexToRgb(hex));
   return rgbToHex(hslToRgb([h, s, clamp01(l + amount)]));
 }
+
+// 极光用的“亮色”：同一个色相，拉高饱和度，亮度固定
+export function vivid(hex, l = 0.64, sMin = 0.62) {
+  const [h, s] = rgbToHsl(hexToRgb(hex));
+  return rgbToHex(hslToRgb([h, Math.max(sMin, s), l]));
+}
+
+// The Expanse 式的“哑光”：降饱和、压暗，像阳极氧化过的金属
+export function muted(hex) {
+  const [h, s, l] = rgbToHsl(hexToRgb(hex));
+  return rgbToHex(hslToRgb([h, s * 0.5 + 0.06, l * 0.62 + 0.04]));
+}

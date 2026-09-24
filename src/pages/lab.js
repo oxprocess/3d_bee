@@ -41,6 +41,12 @@ $$('#picks button').forEach((b) => {
 });
 markPick('story');
 
+// 色彩方向：同一份数据，只换颜色、光和极光出现的方式
+$$('#looks button').forEach((b) => b.addEventListener('click', () => {
+  stage.setLook(b.dataset.look);
+  $$('#looks button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+}));
+
 $('#sealCat').innerHTML = CATEGORIES.map((c) => `<option value="${c.id}">${c.label}</option>`).join('');
 $('#sealCat').value = 'family';
 

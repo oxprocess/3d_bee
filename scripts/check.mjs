@@ -21,7 +21,7 @@ const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--ena
 const cases = [
   { page: 'index.html', size: [1440, 900], scheme: 'light', steps: ['#seal', '#resolve', '#dig', '#lens'] },
   { page: 'index.html', size: [390, 844], scheme: 'dark', steps: ['#inherit'] },
-  { page: 'lab.html', size: [1440, 900], scheme: 'light', clicks: ['seal', 'yes', 'iterate', 'burst'] },
+  { page: 'lab.html', size: [1440, 900], scheme: 'light', clicks: ['seal', 'yes', 'iterate', 'burst'], looks: ['aurora', 'expanse', 'lit'] },
 ];
 let failed = 0;
 for (const c of cases) {
@@ -49,6 +49,12 @@ for (const c of cases) {
     await page.waitForTimeout(ev === 'burst' ? 9000 : 600);
     await page.evaluate(() => window.__dbb.stage.advance(2.5));
     await page.screenshot({ path: path.join(out, `${tag}-${i + 1}.png`) });
+  }
+  for (const [i, look] of (c.looks ?? []).entries()) {
+    await page.click(`#looks [data-look="${look}"]`);
+    await page.evaluate(() => { window.__dbb.stage.setDepth(1); return window.__dbb.stage.advance(2.5); });
+    await page.screenshot({ path: path.join(out, `${tag}-look-${look}.png`) });
+    await page.evaluate(() => { window.__dbb.stage.setDepth(0); return window.__dbb.stage.advance(1); });
   }
   const state = await page.evaluate(() => ({ layers: window.__dbb.store.view.layers.length, events: window.__dbb.store.ledger.events.length }));
   console.log(`${errors.length ? '✗' : '✓'} ${tag}  代数 ${state.layers} · 账本 ${state.events} 行${errors.length ? `\n  ${errors.join('\n  ')}` : ''}`);

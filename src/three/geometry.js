@@ -33,13 +33,13 @@ function gridIndex(i0, i1, nP) {
 }
 
 // 一次算好：网格上每个方向、每一层的外边界与梯度（含候选层）
-export function shapeField(view, { nT = GRID.nT, nP = GRID.nP, withCandidate = true } = {}) {
+export function shapeField(view, { nT = GRID.nT, nP = GRID.nP, withCandidate = true, mapColor = null } = {}) {
   const dirs = gridDirs(nT, nP);
   const layers = view.layers.slice();
   const cand = withCandidate && view.shadow.candidate ? view.shadow.candidate : null;
   if (cand) layers.push(cand);
   const f = radiiField(layers, dirs, view.rule);
-  const rgb = layerRgbList(layers);
+  const rgb = layerRgbList(layers, mapColor);
   return { ...f, dirs, nT, nP, layers, rgb, hasCandidate: !!cand, bodyN: view.layers.length };
 }
 

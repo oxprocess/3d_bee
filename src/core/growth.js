@@ -189,8 +189,8 @@ export function surfaceColorAt(layerRgb, T, M, i, k, out) {
   out[2] = white[2] + (b / ws - white[2]) * s;
 }
 
-export function layerRgbList(layers) {
-  return layers.map((L) => hexToRgb(L.color).map((v) => v / 255));
+export function layerRgbList(layers, mapColor = null) {
+  return layers.map((L) => hexToRgb(mapColor ? mapColor(L.color, L.core) : L.color).map((v) => v / 255));
 }
 
 export function fibonacciSphere(n) {

@@ -93,6 +93,10 @@ export class Droplets {
     this.items.delete(id);
   }
 
+  clear() {
+    for (const id of [...this.items.keys()]) this.remove(id);
+  }
+
   positionOf(id, out = new THREE.Vector3()) {
     const it = this.items.get(id);
     return it ? out.set(it.x, it.y, it.z) : null;

@@ -154,7 +154,7 @@
 | `core/ledger.js` | `createStore(ledger)` → `{ view, ledger, dispatch(event), subscribe(fn), load(ledger), setNow(at) }` · `reduce` · `canInherit` |
 | `core/view.js` | `deriveView(ledger)` → 形态状态（layers、shadow、pending、pose…）· `BINDINGS` · `lamellaStats` |
 | `core/growth.js` | `RULE` · `layerSpec` · `thicknessAt` · `radiiField` · `restPose` |
-| `three/stage.js` | `new PearlStage(el, opts)` · `setView(view)` · `apply(change)` · `setDepth(d)` / `dig(±1)` · `select(k, lamella)` · `count()` · `reset()` · 事件 `view / depth / select / tap / count / caption / frame` · `getAnchor(name)` |
+| `three/stage.js` | `new PearlStage(el, { look })` · `setView(view)` · `apply(change)` · `setDepth(d)` / `dig(±1)` · `select(k, lamella)` · `count()` · `reset()` · `setLook('lit' \| 'aurora' \| 'expanse')` · 事件 `view / depth / select / tap / count / caption / look / frame` · `getAnchor(name)` |
 | `<dbb-seal-card>` | `bind({ store })` |
 | `<dbb-shadow-meter>` | `bind({ store })` |
 | `<dbb-layer-card>` | `bind({ stage })` |
@@ -180,7 +180,30 @@
 11. 练习中的薄荷色和健康色接近：练习状态靠虚线、流光、模糊区分，不只靠颜色。
 12. 形态没由真实学习记录驱动之前，页面标“示意”。
 
-## 11. 已知限制
+## 11. 色彩方向：极光，还是太空文明
+
+三个方向用的是同一份数据、同一套几何和事件，只换颜色、光和极光出现的方式（`stage.setLook(id)`，对比图见 [`color-directions.jpg`](color-directions.jpg)）：
+
+| | Apple Intelligence 式 `aurora` | The Expanse 式 `expanse` | 被经历点亮 `lit`（推荐） |
+|---|---|---|---|
+| 平时 | 一圈一直流动的光谱辉光（蓝紫粉橙） | 一束硬光照亮半边，另一半沉进阴影；一圈青色轨道线与刻度 | 安静的珍珠母，不发光 |
+| 事情发生时 | 和平时差不多，很难分出来 | 琥珀色信标、青色扫描环 | 极光出现：封存时轮廓微亮，结果落下时在倒影上闪过，继承时升起一道极光幕 |
+| 颜色从哪来 | 固定色带 | 固定的琥珀与青；类别色压成哑光 | 这颗珍珠层数最多的几类事，提亮成极光色 |
+| 它在说什么 | 系统的智能正在工作 | 一台精密的机器 | 你的一件事，让它亮了一下 |
+| 风险 | 像 Siri；常亮像一直在听；高饱和光谱盖住层色的含义 | 冷，和家人、健康的日常不是一个世界；材质从珍珠变成陶瓷 | 浅色背景上光加不出来，要给轮廓染色 |
+
+**推荐：用极光，但不照搬 Apple。**
+
+1. 极光只在事情发生时出现。真正的极光是外来的带电粒子顺着磁场撞进大气才亮的，本身就是一次相遇的记录，和“涟漪只来自真实的结果”是同一条纪律。
+2. 光在珍珠里，不在屏幕边上。屏幕四周的辉光是 Siri 的签名，不做。
+3. 色带来自这个人的几类事，每个人的极光都不一样。
+4. 材质不换：珍珠母的虹彩本来就带着极光的颜色，只让它在对的时刻亮起来。
+
+**The Expanse 留给读数层**：细线、刻度、读数这些仪表语言，适合剖面、细纹读数和接口透视，不适合球的皮肤。剧里最有代表性的“会发光、会生长的智能”是原分子，一种会接管人身体的外星技术，放在“它不是你”的外在自我上，潜台词正好反了。
+
+推荐方向的极光强度（`uAurora`）：平时 0；封存时本体 0.7 × p本体、倒影 0.8 × p影子，待揭晓期间保持 0.12–0.14；结果落下时倒影 0.5 + 0.9 × 意外；继承时本体 1.1；每秒衰减约 0.9。浅色背景上同时按强度把轮廓染成极光色。
+
+## 12. 已知限制
 
 - 需要 WebGL2。低端手机上帧率会下降；像素比已限制在 1.75–2，倒影渲染在半分辨率。
 - 声音只写了建议，没有实现；触觉只在支持 `navigator.vibrate` 的设备上有效（iOS Safari 不支持）。

@@ -54,9 +54,21 @@ const PRESETS = {
   shapes: () => { load(store, 'lean'); markShape('lean'); },
   yours: () => storyTo(store, 4, { animate: false }),
   lens: () => storyTo(store, 1, { animate: false }),
+  color: () => { setLook(chapterLook); storyTo(store, 4, { later }); },
   modules: () => {},
   fixes: () => {},
 };
+
+// 色彩方向：只在这一章里切换；其他章节都用推荐的方向
+let chapterLook = 'lit';
+function setLook(id) {
+  stage.setLook(id);
+  $$('.look-pick button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.look === id)));
+}
+$$('.look-pick button').forEach((b) => b.addEventListener('click', () => {
+  chapterLook = b.dataset.look;
+  activate($('#color'), true);
+}));
 
 let active = null;
 let lensByUser = false;
@@ -70,6 +82,7 @@ function activate(sec, force = false) {
   const name = sec.dataset.preset;
   $('#stageLabel').textContent = sec.dataset.label ?? '';
   if (name !== 'dig') stage.setDepth(0);
+  if (name !== 'color') setLook('lit');
   setLens(lensByUser || name === 'lens');
   PRESETS[name]?.();
 }

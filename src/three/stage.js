@@ -9,11 +9,11 @@
 // 在剖面上点一圈，镜头推近那一代；再点，选中其中一条细纹——那一次真实的比较。
 import * as THREE from 'three';
 import { RULE } from '../core/growth.js';
-import { hexToRgb } from '../core/color.js';
-import { createNacre, nacreShared, createCapMaterial, MAX_LAYERS, MAX_LAMELLAE } from './materials.js';
+import { hexToRgb, vivid, muted, mixHex } from '../core/color.js';
+import { createNacre, nacreShared, createCapMaterial, createHaloMaterial, MAX_LAYERS, MAX_LAMELLAE } from './materials.js';
 import { shapeField, surfaceGeometry, capGeometry, outlineGeometry, radiusAt, extents } from './geometry.js';
 import { buildEnvironment } from './env.js';
-import { readPalette, watchTheme, reducedMotion } from './palette.js';
+import { readPalette, watchTheme, reducedMotion, LOOKS } from './palette.js';
 import { Animator, Orientation, damp, dampVec3, ease } from './motion.js';
 import { Water } from './water.js';
 import { Droplets, LightColumn } from './effects.js';
@@ -33,7 +33,9 @@ export class PearlStage extends EventTarget {
     this.host = host;
     this.opts = { interactive: true, wheelDigs: false, haptics: true, captions: true, labels: true, ...opts };
     this.reduce = reducedMotion();
+    this.lookId = LOOKS[opts.look] ? opts.look : 'lit';
     host.classList.add('dbb-stage');
+    host.dataset.look = this.lookId;
     if (!host.hasAttribute('tabindex')) host.tabIndex = 0;
     host.setAttribute('role', 'group');
     host.setAttribute('aria-roledescription', '可转动的 3D 珍珠');
@@ -92,6 +94,30 @@ export class PearlStage extends EventTarget {
     this.scene.add(this.droplets.group);
     this.column = new LightColumn();
     this.scene.add(this.column.group);
+    // 光晕：只有 Apple Intelligence 式色彩方向用
+    this.halo = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), createHaloMaterial(this.shared));
+    this.halo.renderOrder = -1;
+    this.halo.visible = false;
+    this.scene.add(this.halo);
+    this.aur = { body: 0, shadow: 0, flashBody: 0, flashShadow: 0 };
+    // 太阳：只有 The Expanse 式用。太空里只有一个硬光源，照亮一半，另一半落进阴影
+    this.sun = new THREE.DirectionalLight('#FFE3B8', 0);
+    this.sun.position.set(-6, 2.2, 3.2);
+    this.sun.layers.enableAll();
+    this.scene.add(this.sun, this.sun.target);
+    // 仪表（The Expanse 式）：赤道外一圈细细的轨道线和刻度，像飞船上的导航显示
+    this.hud = new THREE.Group();
+    const orbit = [], ticks = [];
+    for (let i = 0; i <= 128; i++) { const a = (i / 128) * Math.PI * 2; orbit.push(new THREE.Vector3(Math.cos(a), 0, Math.sin(a))); }
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * Math.PI * 2, l = i % 9 === 0 ? 0.075 : 0.03;
+      ticks.push(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)), new THREE.Vector3(Math.cos(a) * (1 + l), 0, Math.sin(a) * (1 + l)));
+    }
+    this.hudMat = new THREE.LineBasicMaterial({ color: '#3FC1C9', transparent: true, opacity: 0.5, depthWrite: false });
+    this.hud.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(orbit), this.hudMat));
+    this.hud.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(ticks), this.hudMat));
+    this.hud.visible = false;
+    this.scene.add(this.hud);
 
     this.rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true });
     this.water.material.uniforms.uRefl.value = this.rt.texture;
@@ -155,7 +181,7 @@ export class PearlStage extends EventTarget {
   setView(view, { transition = 'none' } = {}) {
     const first = !this.view;
     this.view = view;
-    const F = shapeField(view);
+    const F = shapeField(view, { mapColor: (hex, core) => this.mapColor(hex, core) });
     this.F = F;
     const N = view.layers.length;
     this.N = N;
@@ -188,6 +214,7 @@ export class PearlStage extends EventTarget {
     this.syncDroplets();
     this.updateProbLabels();
     this.updateAria();
+    this.applyLookColors();
     this.emit('view', { view });
   }
 
@@ -218,13 +245,14 @@ export class PearlStage extends EventTarget {
   updateShadow(view, morph = 0) {
     const F = this.F, N = view.layers.length, s = view.shadow;
     const p = s.mode === 'practice' && F.hasCandidate ? s.progress : 0;
-    const geo = surfaceGeometry(F, N - 1, 0, F.nT, { extra: p, tint: s.mode === 'practice' ? s.color : null, tintAmt: 0.25 + 0.35 * p });
+    const practiceTint = this.look.mute ? mixHex(muted(s.color), this.look.mirrorTint, 0.55) : this.look.id === 'aurora' ? mixHex(s.color, this.look.mirrorTint, 0.5) : s.color;
+    const geo = surfaceGeometry(F, N - 1, 0, F.nT, { extra: p, tint: s.mode === 'practice' ? practiceTint : null, tintAmt: 0.25 + 0.35 * p });
     if (morph > 0 && !this.reduce && this.shadowMesh.geometry.attributes.position?.count === geo.attributes.position.count) this.morphMesh(this.shadowMesh, geo, morph);
     else this.swapGeometry(this.shadowMesh, geo);
     this.targetClarity = s.clarity;
     this.targetAgreement = s.agreement;
     const own = this.shadowMat.userData.own;
-    own.uTint.value.set(s.mode === 'practice' ? s.color : '#BFEBDD');
+    own.uTint.value.set(s.mode === 'practice' ? practiceTint : this.look.mirrorTint);
     own.uTintAmt.value = s.mode === 'practice' ? 0.5 + 0.2 * (1 - s.clarity) : 0.22;
   }
 
@@ -234,7 +262,7 @@ export class PearlStage extends EventTarget {
     data.fill(0);
     this.view.layers.forEach((L, k) => {
       if (k >= MAX_LAYERS) return;
-      const [r, g, b] = hexToRgb(L.color);
+      const [r, g, b] = hexToRgb(this.mapColor(L.color, L.core));
       u.uColors.value[k].setRGB(r / 255, g / 255, b / 255, THREE.SRGBColorSpace);
       const lam = L.lamellae ?? [];
       u.uCounts.value[k] = Math.max(1, Math.min(MAX_LAMELLAE, lam.length || 1));
@@ -605,6 +633,9 @@ export class PearlStage extends EventTarget {
         this.glowTargets.body = p.pBody;
         this.glowTargets.shadow = p.pShadow;
         this.flash = 1;
+        // 两者都给出了判断：极光在两者身上各亮一下，亮度按各自的概率
+        this.aur.flashBody = 0.7 * p.pBody;
+        this.aur.flashShadow = 0.8 * p.pShadow;
         this.caption(`结果之前已写下：本体 ${pct(p.pBody)}，影子 ${pct(p.pShadow)}`);
         break;
       }
@@ -647,8 +678,12 @@ export class PearlStage extends EventTarget {
     const at = await this.droplets.fall(id);
     const pos = at ?? { x: this.droplets.layout.x, z: this.droplets.layout.z };
     const amp = (this.reduce ? 0.35 : 0.55) + 1.7 * effect.surpriseShadow;
-    const col = view.cats.get(effect.category)?.color ?? '#ffffff';
+    const catCol = view.cats.get(effect.category)?.color ?? '#ffffff';
+    const look = this.look;
+    const col = look.ripple ?? (look.aurora === 'none' ? catCol : vivid(catCol, 0.62, 0.66));
     this.water.addRipple(pos.x, pos.z, amp, col, this.time);
+    // 结果落在倒影上：极光只在倒影身上闪过，珍珠不动
+    this.aur.flashShadow = 0.5 + 0.9 * effect.surpriseShadow;
     this.haptic(14);
     this.glowTargets.body = 0;
     this.glowTargets.shadow = 0;
@@ -671,6 +706,7 @@ export class PearlStage extends EventTarget {
     await this.animator.run(1.1, (t) => { this.column.rise = t; this.column.amt = t; }, { easing: ease.outCubic });
     const own = this.proxyMat.userData.own;
     this.setView(this.latest ?? view, { transition: 'grow' });
+    this.aur.flashBody = this.look.aurora === 'none' ? 0 : 1.1;
     await this.animator.run(1.9, (t) => { own.uGrow.value = Math.sin(Math.PI * t) * 0.7; });
     own.uGrow.value = 0;
     this.haptic(24);
@@ -707,7 +743,8 @@ export class PearlStage extends EventTarget {
     const yLine = cam.y + (bottomY - cam.y) * ((cam.z - zd) / cam.z);
     const yTop = Math.max(0.3, yLine - 0.1);
     this.droplets.setLayout({ x: R * 0.22 + 0.08, z: zd, yTop, yBottom: 0.14, size: 0.06 + 0.015 * Math.min(1, R) });
-    this.droplets.sync(this.view.pending, this.reduce);
+    const tint = this.look.droplet;
+    this.droplets.sync(tint ? this.view.pending.map((p) => ({ ...p, color: tint })) : this.view.pending, this.reduce);
   }
 
   // ───────────────────────── 画面 ─────────────────────────
@@ -764,8 +801,65 @@ export class PearlStage extends EventTarget {
     this.host.setAttribute('aria-label', `derbeebee 的珍珠：${v.layers.length} 代，${shadow}，当前视角：${depth}。拖动转动，双指或 + − 键挖深，轻点选中。`);
   }
 
+  // 色彩方向：同一套几何与数据，只换颜色、光和极光出现的方式
+  get look() {
+    return LOOKS[this.lookId] ?? LOOKS.lit;
+  }
+
+  setLook(id) {
+    if (!LOOKS[id] || id === this.lookId) return;
+    this.lookId = id;
+    this.host.dataset.look = id;
+    this.droplets.clear();
+    this.applyTheme();
+    if (this.view) this.setView(this.view);
+    this.emit('look', { look: this.look });
+  }
+
+  // 数据颜色在不同色彩方向下怎么显示：推荐方向原样；The Expanse 式压成哑光；核用各自的珍珠底色
+  mapColor(hex, isCore) {
+    const look = this.look;
+    if (isCore && look.pearl) return look.pearl;
+    return look.mute && !isCore ? muted(hex) : hex;
+  }
+
+  // 推荐方向的极光颜色来自这个人的几类事：层数最多的几类，提亮成极光色
+  lifeAurora(view) {
+    const count = new Map();
+    for (const L of view.layers) if (!L.core) count.set(L.category, (count.get(L.category) ?? 0) + 1);
+    if (view.shadow.category) count.set(view.shadow.category, (count.get(view.shadow.category) ?? 0) + 0.5);
+    const top = [...count.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => view.cats.get(c)?.color).filter(Boolean).slice(0, 4);
+    const l = this.pal?.dark ? 0.62 : 0.6;
+    const cols = top.map((c) => vivid(c, l, 0.66));
+    const fill = [vivid('#8FE6CC', l, 0.6), vivid('#B7A6FF', l, 0.6), vivid('#9CC8FF', l, 0.6)];
+    while (cols.length < 4) cols.push(fill[cols.length % fill.length]);
+    return cols;
+  }
+
+  applyLookColors() {
+    const look = this.look;
+    const cols = look.aurora === 'always' ? look.auroraCols : this.view ? this.lifeAurora(this.view) : LOOKS.aurora.auroraCols;
+    for (const u of [this.shared.uAurCols, this.sShared.uAurCols, this.column.mat.uniforms.uAurCols]) {
+      u.value.forEach((c, i) => c.set(cols[i % cols.length]));
+    }
+    this.column.mat.uniforms.uColor.value.set(look.column ?? '#F4FFFA');
+    this.column.mat.uniforms.uAurMix.value = look.aurora === 'none' ? 0 : 1;
+    this.column.moteMat.uniforms.uColor.value.set(look.column ?? '#FFFFFF');
+  }
+
+  applyMaterialLook(mat, shadow = false) {
+    const m = this.look.material;
+    mat.roughness = m.roughness + (shadow ? 0.08 : 0);
+    mat.metalness = m.metalness;
+    mat.iridescence = m.iridescence;
+    mat.iridescenceThicknessRange = shadow ? [m.irRange[0] + 40, m.irRange[1] + 40] : m.irRange.slice();
+    mat.sheen = m.sheen;
+    mat.sheenColor.set(shadow ? mixHex(m.sheenColor, '#CFF1E6', 0.5) : m.sheenColor);
+    mat.envMapIntensity = m.envMapIntensity * (shadow ? 0.82 : 1);
+  }
+
   applyTheme() {
-    const pal = readPalette(this.host);
+    const pal = readPalette(this.host, this.lookId);
     this.pal = pal;
     const old = this.envRT;
     this.envRT = buildEnvironment(this.renderer, pal);
@@ -781,6 +875,16 @@ export class PearlStage extends EventTarget {
     this.sShared.uBaseGlow.value = pal.baseGlow;
     this.renderer.toneMappingExposure = pal.exposure;
     this.outlineMat.color.set(pal.sub);
+    this.applyMaterialLook(this.proxyMat);
+    this.applyMaterialLook(this.shadowMat, true);
+    this.asm?.layers.forEach((L) => this.applyMaterialLook(L.mat));
+    this.capMat.uniforms.uDiffMin.value = this.look.env === 'space' ? 0.52 : 0.8;
+    this.capMat.uniforms.uKey.value.set(...(this.look.env === 'space' ? [-0.85, 0.42, 0.3] : [-0.45, 0.8, 0.4])).normalize();
+    this.halo.visible = this.look.halo > 0;
+    this.sun.intensity = this.look.env === 'space' ? 3.4 : 0;
+    this.hud.visible = this.look.env === 'space';
+    this.sun.color.set(pal.key);
+    this.applyLookColors();
   }
 
   resize() {
@@ -977,6 +1081,35 @@ export class PearlStage extends EventTarget {
     this.shared.uGlow.value = (this.glowBody * 0.3 + this.flash * this.glowTargets.body * 0.35) * awake;
     this.sShared.uGlow.value = (this.glowShadow * 0.45 + this.flash * this.glowTargets.shadow * 0.5) * awake;
     this.shared.uPulse.value = this.pulse;
+    // 极光：推荐方向只在事情发生时出现；Apple 式一直在；The Expanse 式没有
+    const look = this.look;
+    const pending = !!this.view?.pending?.length;
+    const restB = look.aurora === 'always' ? look.auroraRest : look.aurora === 'events' && pending ? 0.12 : 0;
+    const restS = look.aurora === 'always' ? look.auroraRest * 0.7 : look.aurora === 'events' && pending ? 0.14 : 0;
+    this.aur.flashBody = damp(this.aur.flashBody, 0, 0.9, dt);
+    this.aur.flashShadow = damp(this.aur.flashShadow, 0, 0.8, dt);
+    const on = look.aurora === 'none' ? 0 : 1;
+    this.aur.body = damp(this.aur.body, on * (restB + this.aur.flashBody), 4, dt);
+    this.aur.shadow = damp(this.aur.shadow, on * (restS + this.aur.flashShadow), 4, dt);
+    this.shared.uAurora.value = this.aur.body * (1 - 0.3 * this.doze);
+    this.sShared.uAurora.value = this.aur.shadow;
+    this.shared.uAurTime.value = this.sShared.uAurTime.value = this.reduce ? 0 : t;
+    if (this.hud.visible) {
+      const R = this.ext.max * WS;
+      this.hud.position.copy(this.anchor.position);
+      this.hud.scale.setScalar(R * 1.42);
+      this.hud.rotation.set(0.12, this.reduce ? 0 : t * 0.04, 0.05);
+      this.hudMat.opacity = 0.5 * (1 - clamp(this.depth, 0, 1));
+    }
+    if (this.halo.visible) {
+      const R = this.ext.max * WS;
+      const back = new THREE.Vector3().subVectors(this.anchor.position, this.camera.position).normalize();
+      this.halo.position.copy(this.anchor.position).addScaledVector(back, R * 0.6);
+      this.halo.quaternion.copy(this.camera.quaternion);
+      this.halo.scale.setScalar(R * 3.4);
+      this.halo.material.uniforms.uAmt.value = look.halo * (1 - 0.8 * clamp(this.depth, 0, 1)) * (0.85 + 0.15 * Math.sin(this.breathPhase));
+      this.halo.material.uniforms.uTime.value = this.reduce ? 0 : t;
+    }
     this.shared.uWarmAmt.value = damp(this.shared.uWarmAmt.value, this.warmTarget ? 1 : 0, this.warmTarget ? 8 : 0.9, dt);
 
     // 剖开：盖子绕铰链向后翻，剥开的层化开

@@ -11,7 +11,9 @@
 
 怎么碰它：拖动转动 · 双指张开 / Ctrl + 滚轮往里挖一层 · 轻点选中一代、一次 · 长按数一数 · 双击复位。键盘：←→↑↓ · + − · Enter · C · Esc。
 
-完整的规则、公式和接口在 [`docs/spec.md`](docs/spec.md)。三个色彩方向（Apple Intelligence 式极光、The Expanse 式、推荐的“被经历点亮”）的对比图：[`docs/color-directions.jpg`](docs/color-directions.jpg)，在实验台左侧可以切换。
+完整的规则、公式和接口在 [`docs/spec.md`](docs/spec.md)。
+
+色彩定为 **Apple Intelligence 式**：光谱在它身体里，没有光晕。每一类事的颜色落在它长出来的那一侧，长得越多那一片越宽，代数越多颜色越浓；诞生时只有很淡的一圈。详图 [`docs/color-apple.jpg`](docs/color-apple.jpg)，规则见 spec 第 11 节。另外两个方向（珍珠母、The Expanse 式）留作对比：[`docs/color-directions.jpg`](docs/color-directions.jpg)，在实验台左侧可以切换。
 
 ## 结构
 
@@ -21,6 +23,7 @@ src/
     ledger.js    createStore / reduce / canInherit
     view.js      deriveView / BINDINGS（每个细节 ← 哪个字段）
     growth.js    RULE / layerSpec / radiiField / restPose
+    tone.js      显示色调：3D、卡片、时间轴用同一套颜色
     demo-data.js 宽展、收束、偏展、转向、诞生、爸妈出游
   three/       3D：PearlStage（珍珠、倒影、水面、水滴、光柱、手势、挖掘）
   ui/          组件（Web Components）与设计令牌 dbb.css

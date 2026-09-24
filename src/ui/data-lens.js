@@ -6,6 +6,7 @@ import { BINDINGS } from '../core/view.js';
 // 每个细节标在哪里、放在哪一侧
 const ANCHOR = {
   form: ['L', 'pearl.left'],
+  spectrum: ['L', 'pearl.left'],
   layers: ['L', 'pearl.top'],
   pose: ['L', 'pearl.center'],
   breath: ['L', 'pearl.top'],
@@ -19,7 +20,7 @@ const ANCHOR = {
   lag: ['R', 'shadow.side'],
   dirs: ['R', 'dir.work', 'dir.family'],
 };
-const ORDER = ['form', 'shadowShape', 'clarity', 'droplet', 'ripple', 'layers', 'lag', 'glow', 'outer', 'lamellae', 'dirs', 'pose', 'breath'];
+const ORDER = ['form', 'spectrum', 'shadowShape', 'clarity', 'droplet', 'ripple', 'layers', 'lag', 'glow', 'outer', 'lamellae', 'dirs', 'pose', 'breath'];
 
 export class DataLens extends DbbElement {
   bind({ stage }) {

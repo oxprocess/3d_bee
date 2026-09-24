@@ -3,11 +3,13 @@ import { mulberry32, hashString, clamp } from './rng.js';
 import { lerpIso, addMinutes } from './time.js';
 import { lamellaStats } from './view.js';
 
+// 按色相顺序围一圈：工作（琥珀）→ 健康（绿）→ 朋友（蓝）→ 家人（粉）→ 回到工作。
+// 相邻的两类事颜色也相邻，混合处是黄绿、青、紫、珊瑚这些鲜亮的中间色。
 export const CATEGORIES = [
   { id: 'work', label: '工作', color: '#F1D2A6', azimuth: 0 },
-  { id: 'friends', label: '朋友', color: '#BFD5F2', azimuth: 90 },
-  { id: 'family', label: '家人', color: '#EFC3CF', azimuth: 180 },
-  { id: 'health', label: '健康', color: '#BFE6D6', azimuth: 270 },
+  { id: 'health', label: '健康', color: '#BFE6D6', azimuth: 90 },
+  { id: 'friends', label: '朋友', color: '#BFD5F2', azimuth: 180 },
+  { id: 'family', label: '家人', color: '#EFC3CF', azimuth: 270 },
 ];
 
 const NOTES = {

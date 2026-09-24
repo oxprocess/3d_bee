@@ -1,7 +1,8 @@
 // 场景配色从页面的 CSS 变量读取，页面换主题，水面和光线跟着换。
-// 另外有三个“色彩方向”（look），同一套几何与数据，只换颜色、光和极光的出现方式：
-//   lit      推荐：被经历点亮的珍珠母。平时是安静的珍珠母；极光只在事情发生时出现，颜色来自你的几类事
-//   aurora   Apple Intelligence 式：常亮、流动的光谱辉光
+// 色彩方向（look）：同一套几何与数据，只换颜色、光和光出现的方式。
+//   apple    Apple Intelligence 式（默认）：光谱在身体里，没有光晕。颜色按色相围一圈，
+//            每一类事的颜色在它长出来的那一侧；中间柔、边缘浓；诞生时很淡，经历让颜色变浓
+//   lit      珍珠母：平时是安静的珍珠母，极光只在事情发生时沿轮廓出现
 //   expanse  The Expanse 式：太空里的工程美学。一束硬朗的日光、陶瓷与金属、琥珀与青色的仪表光
 const BASE = {
   light: {
@@ -19,37 +20,44 @@ const BASE = {
 const NACRE = { roughness: 0.26, metalness: 0.12, iridescence: 1, irRange: [220, 620], sheen: 0.6, sheenColor: '#E3D6F6', envMapIntensity: 0.95 };
 
 export const LOOKS = {
+  apple: {
+    id: 'apple',
+    label: 'Apple Intelligence 式',
+    note: '光谱在身体里，没有光晕；颜色在它长出来的那一侧',
+    env: 'studio',
+    material: NACRE,
+    spectral: true,
+    aurora: 'none',
+    mute: false,
+    pearl: '#F4F4F8',
+    tone: 'apple',
+    mirrorTint: '#FFFFFF',
+    droplet: '#DCE6F2',
+    // 中性的底：光谱只有在不带颜色的底上才干净
+    palettes: {
+      light: {
+        bg: '#F2F1F6', envTop: '#FFFFFF', envHorizon: '#F2F1F6', envBottom: '#E4E3EC',
+        key: '#FFFFFF', fill: '#ECEBF4', rim: '#FFFFFF', waterTint: '#FFFFFF', waterDeep: '#E8E7EF', skyHi: '#FFFFFF',
+        glow: '#FFFFFF', label: '#1C1C22', sub: '#8A8A96', coreGlow: '#FFFFFF', baseGlow: 0, exposure: 1.0,
+      },
+      dark: {
+        bg: '#0E0E13', envTop: '#23232C', envHorizon: '#1A1A22', envBottom: '#101016',
+        key: '#F4F4FA', fill: '#3A3A48', rim: '#2E3440', waterTint: '#15151C', waterDeep: '#08080B', skyHi: '#3A3A46',
+        glow: '#FFFFFF', label: '#EEEEF3', sub: '#8E8E9A', coreGlow: '#FFFFFF', baseGlow: 0, exposure: 1.0,
+      },
+    },
+    // 两极的颜色：顶上清凉的薄荷、底下兰紫（取自参考图的上缘与下缘）
+    spec: { top: '#A9D9C6', bottom: '#BC8FC0' },
+  },
   lit: {
     id: 'lit',
-    label: '被经历点亮',
-    note: '平时是安静的珍珠母；极光只在事情发生时出现，颜色来自你的几类事',
+    label: '珍珠母',
+    note: '平时是安静的珍珠母；极光只在事情发生时沿轮廓出现',
     env: 'studio',
     material: NACRE,
     aurora: 'events',
-    halo: 0,
     mute: false,
     mirrorTint: '#BFEBDD',
-  },
-  aurora: {
-    id: 'aurora',
-    label: 'Apple Intelligence 式极光',
-    note: '常亮、流动的光谱辉光：蓝、紫、粉、橙',
-    forceDark: true,
-    env: 'aurora',
-    material: { roughness: 0.2, metalness: 0.08, iridescence: 1, irRange: [260, 1000], sheen: 0.9, sheenColor: '#B9A6FF', envMapIntensity: 1.25 },
-    aurora: 'always',
-    auroraRest: 0.5,
-    auroraCols: ['#3FA9FF', '#8D5BFF', '#FF5EB8', '#FF9F43'],
-    halo: 0.75,
-    mute: false,
-    pearl: '#EEEAFF',
-    mirrorTint: '#8FE3FF',
-    droplet: '#BFEFFF',
-    palette: {
-      bg: '#0B0A1C', envTop: '#231F4A', envHorizon: '#3B2A55', envBottom: '#0E1A2E',
-      key: '#FFFFFF', fill: '#7A5CFF', rim: '#2BD9FF', waterTint: '#141231', waterDeep: '#07060F', skyHi: '#4A3C86',
-      glow: '#C9B8FF', label: '#EEE9F6', sub: '#9A92B0', coreGlow: '#FFFFFF', baseGlow: 0.06, exposure: 1.1,
-    },
   },
   expanse: {
     id: 'expanse',
@@ -59,7 +67,6 @@ export const LOOKS = {
     env: 'space',
     material: { roughness: 0.36, metalness: 0.3, iridescence: 0.3, irRange: [160, 300], sheen: 0.25, sheenColor: '#9AAAB5', envMapIntensity: 1.05 },
     aurora: 'none',
-    halo: 0,
     mute: true,
     pearl: '#D3D7DC',
     mirrorTint: '#A9BCC6',
@@ -81,10 +88,10 @@ export function isDark() {
   return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
-export function readPalette(el, lookId = 'lit') {
-  const look = LOOKS[lookId] ?? LOOKS.lit;
+export function readPalette(el, lookId = 'apple') {
+  const look = LOOKS[lookId] ?? LOOKS.apple;
   const dark = look.forceDark ? true : isDark();
-  const base = look.palette ?? (dark ? BASE.dark : BASE.light);
+  const base = look.palette ?? (look.palettes ? look.palettes[dark ? 'dark' : 'light'] : dark ? BASE.dark : BASE.light);
   const cs = getComputedStyle(el);
   const pick = (name, def) => (cs.getPropertyValue(name) || '').trim() || def;
   return {

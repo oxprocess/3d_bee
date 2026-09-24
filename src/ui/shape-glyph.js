@@ -1,6 +1,7 @@
 // 形态缩略图：从上往下看的赤道剖面。一圈是一代，颜色是长出它的事，虚线是倒影正在练的那一层。
 // 和 3D 用的是同一条生长规则，所以缩略图就是数据本身，不是另画的插图。
 import { DbbElement, define } from './base.js';
+import { tone, layerTone, getTone } from '../core/tone.js';
 import { radiiField } from '../core/growth.js';
 
 const M = 96;
@@ -33,13 +34,14 @@ export function glyphSvg(view, size = 64) {
   let out = '';
   if (cand) {
     const p = view.shadow.progress;
-    out += `<path d="${path(N)}" fill="${view.shadow.color}" fill-opacity="${(0.15 + 0.25 * p).toFixed(2)}" stroke="var(--dbb-mint)" stroke-width="1" stroke-dasharray="2.5 2"/>`;
+    const fill = getTone() === 'lit' ? view.shadow.color : tone(view.shadow.catColor ?? view.shadow.color);
+    out += `<path d="${path(N)}" fill="${fill}" fill-opacity="${(0.15 + 0.25 * p).toFixed(2)}" stroke="var(--dbb-mint)" stroke-width="1" stroke-dasharray="2.5 2"/>`;
   }
   for (let k = N - 1; k >= 0; k--) {
     const L = view.layers[k];
-    out += `<path d="${path(k)}" fill="${L.core ? `url(#${gid})` : L.color}" stroke="#fff" stroke-opacity=".9" stroke-width=".8"/>`;
+    out += `<path d="${path(k)}" fill="${L.core ? `url(#${gid})` : layerTone(L)}" stroke="#fff" stroke-opacity=".9" stroke-width=".8"/>`;
   }
-  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true"><defs><radialGradient id="${gid}" cx="45%" cy="40%" r="65%"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#E4DCF0"/></radialGradient></defs>${out}</svg>`;
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true"><defs><radialGradient id="${gid}" cx="45%" cy="40%" r="65%"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="${getTone() === 'lit' ? '#E4DCF0' : '#E6E6EE'}"/></radialGradient></defs>${out}</svg>`;
 }
 
 export class ShapeGlyph extends DbbElement {

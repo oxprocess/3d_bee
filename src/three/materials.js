@@ -82,8 +82,106 @@ export function nacreShared() {
     uAurora: { value: 0 },
     uAurCols: { value: ['#3FA9FF', '#8D5BFF', '#FF5EB8', '#FF9F43'].map((c) => new THREE.Color(c)) },
     uAurTime: { value: 0 },
+    // Apple Intelligence 式光谱：每一类事的方位、色调、分量；成熟度；流动；事件时的亮度
+    uSpec: { value: 0 },
+    uSpecN: { value: 0 },
+    uCatAz: { value: new Float32Array(8) },
+    uCatLab: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) }, // OKLab
+    uCatW: { value: new Float32Array(8) },
+    uSpecMature: { value: 1 },
+    uSpecTime: { value: 0 },
+    uSpecBoost: { value: 0 },
+    uSpecTop: { value: new THREE.Vector3(0.84, -0.06, 0.01) }, // 两极的颜色（OKLab）
+    uSpecBottom: { value: new THREE.Vector3(0.7, 0.07, -0.05) },
+    uSpecKey: { value: new THREE.Vector3(-0.45, 0.8, 0.4).normalize() },
+    uSpecDark: { value: 0 },
   };
 }
+
+// 光谱的颜色场。颜色挂在珍珠自己身上（跟着它转），每一类事的颜色在它长出来的那一侧；
+// 两极各有一种颜色（顶上清凉的薄荷、底下兰紫）。
+// 混色在 OKLab（感知均匀的颜色空间）里做：亮度过渡均匀，不会有一道比两边都亮的黄，也不会突然跳色。
+export const SPECTRAL_GLSL = /* glsl */ `
+#define DBB_MAXC 8
+uniform float uSpec; uniform float uSpecN; uniform float uCatAz[DBB_MAXC]; uniform vec3 uCatLab[DBB_MAXC]; uniform float uCatW[DBB_MAXC];
+uniform float uSpecMature; uniform float uSpecTime; uniform float uSpecBoost;
+uniform vec3 uSpecTop; uniform vec3 uSpecBottom; uniform vec3 uSpecKey; uniform float uSpecDark;
+vec3 dbbOklabToLinear(vec3 c) {
+  float l_ = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
+  float m_ = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
+  float s_ = c.x - 0.0894841775 * c.y - 1.2914855480 * c.z;
+  float l = l_ * l_ * l_, m = m_ * m_ * m_, s = s_ * s_ * s_;
+  return vec3(
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s);
+}
+vec3 dbbSpectral(vec3 local, vec3 nV, vec3 vV, vec3 nW) {
+  vec3 d = normalize(local);
+  float T = uSpecTime;
+  // 缓慢流动：色带轻轻摆动、两极的边界轻轻起伏；哪一类在哪一侧不变
+  float n1 = dbb_snoise(d * 0.85 + vec3(T * 0.04, T * 0.06, -T * 0.03));
+  float n2 = dbb_snoise(d * 1.05 + vec3(-T * 0.045, 11.0 + T * 0.035, T * 0.05));
+  float phi = atan(d.z, d.x) + 0.26 * n1;
+  float y = clamp(d.y + 0.09 * n2, -1.0, 1.0);
+  vec2 U = vec2(0.0), AB = vec2(0.0);
+  float Ls = 0.0, Cs = 0.0, ws = 0.0;
+  // 每一类事占一片：自己的方位上最强，分量越大这一片越宽；一次都没长过的类别也留一点影子。
+  // 权重先平方再归一化：每一片中间是比较纯的颜色，交界处是一段宽而柔和的过渡（参考图就是这样的几块色区）
+  float eq = 1.0 - 0.6 * y * y;
+  for (int i = 0; i < DBB_MAXC; i++) {
+    if (float(i) >= uSpecN) break;
+    float dp = phi - uCatAz[i];
+    dp = atan(sin(dp), cos(dp));
+    float w = uCatW[i];
+    float width = 0.95 + 0.6 * w;
+    float k = exp(-dp * dp / (width * width)) * (0.45 + 0.85 * w) * eq;
+    k = k * k;
+    vec3 c = uCatLab[i];
+    float C = max(length(c.yz), 1e-4);
+    U += c.yz / C * k; AB += c.yz * k; Ls += c.x * k; Cs += C * k; ws += k;
+  }
+  // 两极：顶上清凉、底下兰紫，占纬度 45° 以上的一片
+  for (int j = 0; j < 2; j++) {
+    vec3 P = j == 0 ? uSpecTop : uSpecBottom;
+    float k = 1.05 * smoothstep(0.15, 0.95, j == 0 ? y : -y);
+    k = k * k;
+    float C = max(length(P.yz), 1e-4);
+    U += P.yz / C * k; AB += P.yz * k; Ls += P.x * k; Cs += C * k; ws += k;
+  }
+  ws = max(ws, 1e-5);
+  U /= ws; AB /= ws; Ls /= ws; Cs /= ws;
+  // 色相相近的颜色按色相混（蓝到兰紫仍然干净）；相差大的直接在 OKLab 里混：
+  // 绿到琥珀之间是一段偏暖的橄榄色，绿到兰紫之间是一段柔和的灰——像光在磨砂的身体里散开
+  float coh = length(U);
+  vec2 ab = mix(AB, U / max(coh, 1e-4) * Cs, smoothstep(0.6, 0.95, coh));
+  float L = Ls;
+  float C = length(ab);
+  vec2 h = C > 1e-5 ? ab / C : vec2(1.0, 0.0);
+  // 每一片颜色内部也有一点起伏（色相 ±10° 缓慢漂移）：像光在里面流动，不是一块平涂
+  float hj = 0.17 * dbb_snoise(d * 1.35 + vec3(7.0 - T * 0.05, T * 0.03, 3.0 + T * 0.04));
+  h = vec2(h.x * cos(hj) - h.y * sin(hj), h.x * sin(hj) + h.y * cos(hj));
+  // 事件：颜色浓一阵
+  C *= 1.0 + 0.3 * uSpecBoost;
+  // 深度：正对你的地方像光透过来，浅一点；越到边缘看得越厚，颜色越浓
+  float f = clamp(dot(nV, vV), 0.0, 1.0);
+  float e = pow(1.0 - f, 1.6);
+  L += 0.025 * f * f - 0.02 * e;
+  C *= 1.0 - 0.25 * f * f + 0.38 * e;
+  // 彩度的软上限：最浓的颜色也不刺眼（参考图里最浓的玫红与橙，彩度大约 0.15）
+  C = 0.16 * tanh(C / 0.16);
+  // 诞生时很淡：颜色都在，都很浅；经历让颜色变浓
+  C *= mix(0.28, 1.0, uSpecMature);
+  L = mix(0.95, L, mix(0.35, 1.0, uSpecMature));
+  L -= 0.04 * uSpecDark;
+  vec3 col = clamp(dbbOklabToLinear(vec3(L, h * C)), 0.0, 1.0);
+  // 左上方一点柔光、一道很细的亮边：有体积，但没有高光，也不反射环境
+  float K = dot(nW, uSpecKey) * 0.5 + 0.5;
+  col *= 0.92 + 0.11 * K;
+  col += vec3(1.0) * pow(1.0 - f, 6.0) * (0.04 + 0.14 * K) * (1.0 - uSpecDark * 0.6);
+  return col;
+}
+`;
 
 // 四个颜色首尾相接的循环渐变（极光的颜色带）
 export const AURORA_GLSL = /* glsl */ `
@@ -163,7 +261,8 @@ uniform float uDissolve; uniform float uDisR; uniform vec3 uEdgeColor; uniform f
 uniform vec3 uTint; uniform float uTintAmt; uniform float uGrow; uniform vec3 uGrowColor;
 uniform float uAurora; uniform float uAurTime;
 ${NOISE_GLSL}
-${AURORA_GLSL}`,
+${AURORA_GLSL}
+${SPECTRAL_GLSL}`,
       )
       .replace(
         '#include <clipping_planes_fragment>',
@@ -171,6 +270,7 @@ ${AURORA_GLSL}`,
 float dbbEdge = 0.0;
 vec3 dbbAurCol = vec3(0.0);
 float dbbAurAmt = 0.0;
+vec3 dbbFx = vec3(0.0);
 #ifdef DBB_DISSOLVE
   if (uDissolve > 0.0) {
     // 从剖面那道边开始化开，像把一层轻轻揭下来
@@ -196,24 +296,25 @@ float dbbAurAmt = 0.0;
   vec3 nV = normalize(normal);
   vec3 vV = normalize(vViewPosition);
   float rim = pow(1.0 - clamp(dot(nV, vV), 0.0, 1.0), 2.4);
-  totalEmissiveRadiance += uGlowColor * (uGlow * (0.22 + 0.78 * rim) + uBaseGlow * (0.4 + rim));
+  dbbFx += uGlowColor * (uGlow * (0.22 + 0.78 * rim) + uBaseGlow * (0.4 + rim));
   float dw = distance(vDbbLocal, uWarmPos);
-  totalEmissiveRadiance += vec3(1.0, 0.78, 0.62) * uWarmAmt * exp(-dw * dw / 0.1) * 0.5;
+  dbbFx += vec3(1.0, 0.78, 0.62) * uWarmAmt * exp(-dw * dw / 0.1) * 0.5;
   float band = exp(-pow((vDbbLocal.y - uSweepY) / 0.16, 2.0));
-  totalEmissiveRadiance += vec3(0.93, 0.91, 1.0) * uSweepAmt * band * (0.25 + 0.75 * rim) * 0.55;
-  totalEmissiveRadiance += uGlowColor * uPulse * (0.35 + 0.65 * rim) * 0.5;
-  totalEmissiveRadiance += uGrowColor * uGrow * (0.45 + 0.55 * rim);
-  totalEmissiveRadiance += uEdgeColor * dbbEdge * 2.2;
+  dbbFx += vec3(0.93, 0.91, 1.0) * uSweepAmt * band * (0.25 + 0.75 * rim) * 0.55;
+  dbbFx += uGlowColor * uPulse * (0.35 + 0.65 * rim) * 0.5;
+  dbbFx += uGrowColor * uGrow * (0.45 + 0.55 * rim);
+  dbbFx += uEdgeColor * dbbEdge * 2.2;
   if (uAurora > 0.001) {
     // 沿轮廓流动：角度决定颜色，缓慢转动，再加一点噪声让它像光幕而不是色环
     float ang = atan(nV.y, nV.x) / 6.28318;
     float flow = ang + uAurTime * 0.05 + dbb_snoise(vec3(vDbbLocal.xy * 1.3, uAurTime * 0.12)) * 0.16;
     dbbAurCol = dbbAurora(flow);
     float band = pow(rim, 1.3);
-    totalEmissiveRadiance += dbbAurCol * uAurora * (band * 1.7 + 0.1);
+    dbbFx += dbbAurCol * uAurora * (band * 1.7 + 0.1);
     // 浅色背景上光是加不出来的：同时把轮廓染上极光的颜色
     dbbAurAmt = clamp(uAurora * band * 1.1, 0.0, 0.8);
   }
+  totalEmissiveRadiance += dbbFx;
 }`,
       )
       .replace(
@@ -233,6 +334,14 @@ float dbbAurAmt = 0.0;
   diffuseColor.a *= uAlpha * smoothstep(uFadeBottom, uFadeTop, vDbbWorld.y);
 #endif
 outgoingLight = mix(outgoingLight, dbbAurCol * 1.05, dbbAurAmt);
+if (uSpec > 0.001) {
+  vec3 nS = normalize(normal);
+  vec3 sc = dbbSpectral(vDbbLocal, nS, normalize(vViewPosition), inverseTransformDirection(nS, viewMatrix));
+#ifdef DBB_TINT
+  sc = mix(sc, uTint, uTintAmt);
+#endif
+  outgoingLight = mix(outgoingLight, sc + dbbFx, uSpec);
+}
 #include <opaque_fragment>`,
       );
   };
@@ -659,44 +768,6 @@ export function createDropMaterial(tint) {
     },
     vertexShader: DROP_VS,
     fragmentShader: DROP_FS,
-  });
-}
-
-// 光晕：珍珠身后一圈流动的彩色辉光（Apple Intelligence 式色彩方向用）
-const HALO_VS = /* glsl */ `
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}`;
-
-const HALO_FS = /* glsl */ `
-uniform float uAmt;
-uniform float uTime;
-varying vec2 vUv;
-${NOISE_GLSL}
-${AURORA_GLSL}
-void main() {
-  vec2 p = vUv * 2.0 - 1.0;
-  float r = length(p);
-  float ang = atan(p.y, p.x) / 6.28318;
-  float wob = dbb_snoise(vec3(p * 1.6, uTime * 0.2)) * 0.06;
-  float ring = exp(-pow((r - 0.62 - wob) / 0.2, 2.0));
-  float inner = exp(-pow(r / 0.62, 2.0)) * 0.18;
-  vec3 c = dbbAurora(ang + uTime * 0.05 + wob);
-  float a = uAmt * (ring + inner) * (1.0 - smoothstep(0.86, 1.0, r));
-  gl_FragColor = vec4(c * a, a);
-  #include <colorspace_fragment>
-}`;
-
-export function createHaloMaterial(shared) {
-  return new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    uniforms: { uAmt: { value: 0 }, uTime: { value: 0 }, uAurCols: shared.uAurCols },
-    vertexShader: HALO_VS,
-    fragmentShader: HALO_FS,
   });
 }
 

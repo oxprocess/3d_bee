@@ -1,6 +1,7 @@
 // 时间轴：每个点是一次长成新层的时刻，颜色是那一层的颜色；最右一段虚线是“现在”——倒影还在练的部分。
 // 点一个点，珍珠就剥回那一代的样子（深度和时间是同一根轴）。
 import { DbbElement, esc, define } from './base.js';
+import { layerTone } from '../core/tone.js';
 import { fmtMonth } from '../core/time.js';
 
 export class Timeline extends DbbElement {
@@ -25,7 +26,7 @@ export class Timeline extends DbbElement {
       const x = N === 1 ? 0 : (k / (N - 1)) * 100;
       const cls = [k + 1 === shownGen && d.depth > 0 ? 'on' : '', k + 1 > shownGen ? 'later' : ''].join(' ');
       const label = L.core ? '诞生' : fmtMonth(L.bornAt);
-      return `<button type="button" class="dbb-tl-dot ${cls}" style="left:${x}%;--c:${L.core ? 'var(--dbb-card-solid)' : L.color}" data-gen="${k + 1}" aria-label="第 ${k + 1} 代，${esc(label)}${L.source ? `，${esc(L.source)}` : ''}"><i></i><span>${esc(label)}</span></button>`;
+      return `<button type="button" class="dbb-tl-dot ${cls}" style="left:${x}%;--c:${L.core ? 'var(--dbb-card-solid)' : layerTone(L)}" data-gen="${k + 1}" aria-label="第 ${k + 1} 代，${esc(label)}${L.source ? `，${esc(L.source)}` : ''}"><i></i><span>${esc(label)}</span></button>`;
     }).join('');
     const now = s.mode === 'mirror' ? '现在：倒影一模一样' : `现在：倒影练习中 ${s.n}/${v.policy.minComparisons}`;
     this.innerHTML = `

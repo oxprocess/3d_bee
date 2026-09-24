@@ -10,7 +10,7 @@
 // 因此可以解析地求法线，也可以对任意方向切开、剥开。
 
 import { clamp01 } from './rng.js';
-import { deepen, hexToRgb, mixHex } from './color.js';
+import { deepen, hexToRgb, mixHex, hueOf } from './color.js';
 
 export const RULE = Object.freeze({
   coreRadius: 0.5, // 诞生时的核，第 1 代
@@ -27,11 +27,15 @@ export const RULE = Object.freeze({
 export const PEARL_WHITE = '#EAE3F2';
 export const PRACTICE_MINT = '#9FDCC6';
 
-// 类别均匀围在水平一圈（可在数据里指定方位角）。y 轴朝上，+z 朝向观看者。
+// 类别围在水平一圈。y 轴朝上，+z 朝向观看者。
+// 没有指定方位角时按色相排：相邻的两类事颜色也相邻，表面上颜色混合的地方是鲜亮的中间色，不会发灰。
 export function categoryIndex(categories) {
   const n = categories.length || 1;
   const map = new Map();
-  categories.forEach((c, i) => {
+  const order = categories.some((c) => c.azimuth == null)
+    ? [...categories].sort((a, b) => hueOf(a.color) - hueOf(b.color))
+    : categories;
+  order.forEach((c, i) => {
     const deg = c.azimuth ?? (i * 360) / n;
     const az = (deg * Math.PI) / 180;
     map.set(c.id, { ...c, az, dir: [Math.cos(az), 0, Math.sin(az)] });
@@ -190,7 +194,7 @@ export function surfaceColorAt(layerRgb, T, M, i, k, out) {
 }
 
 export function layerRgbList(layers, mapColor = null) {
-  return layers.map((L) => hexToRgb(mapColor ? mapColor(L.color, L.core) : L.color).map((v) => v / 255));
+  return layers.map((L) => hexToRgb(mapColor ? mapColor(L.color, L.core, L) : L.color).map((v) => v / 255));
 }
 
 export function fibonacciSphere(n) {

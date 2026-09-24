@@ -1,5 +1,8 @@
 // 组件基类：轻量 Web Component，渲染在 light DOM 里，样式全部来自 dbb.css 的令牌。
 // 用法：el.data = {...}；或 el.bind({ store, stage })，让它自己订阅变化。
+// 颜色都经过 core/tone.js：舞台换色彩方向时，组件跟着重画，和珍珠用同一种颜色。
+import { tone } from '../core/tone.js';
+
 export class DbbElement extends HTMLElement {
   constructor() {
     super();
@@ -15,9 +18,12 @@ export class DbbElement extends HTMLElement {
   }
   connectedCallback() {
     this.classList.add('dbb-el');
+    this._onTone ??= () => this.render();
+    window.addEventListener('dbb-tone', this._onTone);
     this.render();
   }
   disconnectedCallback() {
+    window.removeEventListener('dbb-tone', this._onTone);
     this.unbind();
   }
   unbind() {
@@ -47,5 +53,5 @@ export function define(name, cls) {
 export function catChip(view, id) {
   const c = view?.cats?.get(id);
   if (!c) return '';
-  return `<span class="dbb-chip"><i style="background:${c.color}"></i>${esc(c.label)}</span>`;
+  return `<span class="dbb-chip"><i style="background:${tone(c.color)}"></i>${esc(c.label)}</span>`;
 }

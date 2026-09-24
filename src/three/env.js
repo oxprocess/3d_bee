@@ -51,15 +51,7 @@ export function buildEnvironment(renderer, pal) {
     disposables.push(m.geometry, m.material);
   };
   const layout = pal.look?.env ?? 'studio';
-  if (layout === 'aurora') {
-    // 深色的夜，四周是彩色的光带：珍珠表面映出蓝、紫、粉、橙
-    box(2.6, 1.8, pal.key, 3.2, [-3.6, 5.2, 4.4]);
-    box(1.4, 3.8, pal.fill, 2.2, [6.2, 1.0, 1.6]);
-    box(9.0, 2.6, '#FF5EB8', 0.9, [0, 0.6, -7.5]);
-    box(9.0, 3.2, '#FF9F43', 0.35, [0, -1.2, 7.5]);
-    box(3.0, 1.2, '#3FA9FF', 1.6, [5.0, 4.6, -2.0]);
-    box(6.0, 6.0, pal.rim, 1.0, [0, -6.5, 0.5]);
-  } else if (layout === 'space') {
+  if (layout === 'space') {
     // 太空：只有一个太阳，从左侧硬硬地照过来；背后一条青色的仪表光；几乎没有补光
     box(0.9, 0.9, pal.key, 16.0, [-8.5, 1.8, 2.4]);
     box(0.35, 4.5, pal.rim, 1.6, [6.4, 0.6, -4.8]);

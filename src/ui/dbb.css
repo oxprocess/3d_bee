@@ -1,76 +1,79 @@
 /* derbeebee 设计令牌与组件样式。页面只需引入这一个文件。 */
 :root {
-  --dbb-mist-1: #ECE3F3;
-  --dbb-mist-2: #F7F3FA;
-  --dbb-scene-bg: #F3EDF7;
-  --dbb-ink: #1E1A2E;
-  --dbb-body: #565068;
-  --dbb-soft: #8E86A0;
+  /* 中性的底：光谱只有在不带颜色的底上才干净（Apple Intelligence 式） */
+  --dbb-mist-1: #ECEBF1;
+  --dbb-mist-2: #F7F7FA;
+  --dbb-scene-bg: #F2F1F6;
+  --dbb-ink: #1C1C22;
+  --dbb-body: #55555F;
+  --dbb-soft: #8A8A96;
   --dbb-violet: #7B6BBE;
   --dbb-mint: #3F9A78;
   --dbb-mint-soft: rgba(79, 168, 134, 0.16);
-  --dbb-line: rgba(123, 107, 190, 0.22);
-  --dbb-card: rgba(255, 255, 255, 0.74);
+  --dbb-line: rgba(60, 60, 84, 0.14);
+  --dbb-card: rgba(255, 255, 255, 0.78);
   --dbb-card-solid: #FFFFFF;
-  --dbb-shadow: 0 10px 30px rgba(80, 64, 140, 0.1);
-  --dbb-brand: linear-gradient(92deg, #3D7BD6 0%, #8B7BC7 52%, #C2566E 100%);
+  --dbb-shadow: 0 10px 30px rgba(30, 30, 52, 0.08);
+  --dbb-brand: linear-gradient(92deg, #3F86D9 0%, #9D7AD6 36%, #D8577D 68%, #DB8F2E 100%);
   --dbb-serif: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   --dbb-sans: "PingFang SC", "HarmonyOS Sans SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
   --dbb-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
-  --dbb-work: #F1D2A6;
-  --dbb-family: #EFC3CF;
-  --dbb-health: #BFE6D6;
-  --dbb-friends: #BFD5F2;
+  /* 四类事的显示色（Apple 式色调；数据里存的是各自的原色，见 core/tone.js） */
+  --dbb-work: #DD9939;
+  --dbb-family: #D9587B;
+  --dbb-health: #8BD3B5;
+  --dbb-friends: #A0BDE4;
   --dbb-radius: 16px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --dbb-mist-1: #1B1726;
-    --dbb-mist-2: #13111A;
-    --dbb-scene-bg: #16131F;
-    --dbb-ink: #EEE9F6;
-    --dbb-body: #C6BFD8;
-    --dbb-soft: #928AA8;
+    --dbb-mist-1: #16161C;
+    --dbb-mist-2: #0E0E13;
+    --dbb-scene-bg: #111116;
+    --dbb-ink: #EEEEF3;
+    --dbb-body: #C4C4CE;
+    --dbb-soft: #8E8E9A;
     --dbb-violet: #AEA0EE;
     --dbb-mint: #7FD1B0;
     --dbb-mint-soft: rgba(127, 209, 176, 0.16);
-    --dbb-line: rgba(174, 160, 238, 0.22);
-    --dbb-card: rgba(36, 31, 50, 0.76);
-    --dbb-card-solid: #231E31;
+    --dbb-line: rgba(210, 210, 230, 0.14);
+    --dbb-card: rgba(30, 30, 38, 0.78);
+    --dbb-card-solid: #1E1E26;
     --dbb-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --dbb-mist-1: #1B1726;
-  --dbb-mist-2: #13111A;
-  --dbb-scene-bg: #16131F;
-  --dbb-ink: #EEE9F6;
-  --dbb-body: #C6BFD8;
-  --dbb-soft: #928AA8;
+  --dbb-mist-1: #16161C;
+  --dbb-mist-2: #0E0E13;
+  --dbb-scene-bg: #111116;
+  --dbb-ink: #EEEEF3;
+  --dbb-body: #C4C4CE;
+  --dbb-soft: #8E8E9A;
   --dbb-violet: #AEA0EE;
   --dbb-mint: #7FD1B0;
   --dbb-mint-soft: rgba(127, 209, 176, 0.16);
-  --dbb-line: rgba(174, 160, 238, 0.22);
-  --dbb-card: rgba(36, 31, 50, 0.76);
-  --dbb-card-solid: #231E31;
+  --dbb-line: rgba(210, 210, 230, 0.14);
+  --dbb-card: rgba(30, 30, 38, 0.78);
+  --dbb-card-solid: #1E1E26;
   --dbb-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 /* 组件里用 hidden 属性开关显示；这条保证它不被 display 规则盖掉 */
 [hidden] { display: none !important; }
 
-/* ── 色彩方向：两个深色方向在舞台里用自己的夜色，不管页面是浅色还是深色 ── */
-.dbb-stage[data-look="aurora"] {
-  color-scheme: dark;
-  --dbb-scene-bg: #0B0A1C;
-  --dbb-ink: #EEE9F6; --dbb-body: #C6BFD8; --dbb-soft: #9A92B0; --dbb-violet: #B9A6FF; --dbb-mint: #7FE3D2;
-  --dbb-line: rgba(185, 166, 255, 0.24); --dbb-card: rgba(26, 22, 52, 0.72); --dbb-card-solid: #1A1634;
-  background: radial-gradient(ellipse 70% 55% at 50% 38%, #1D1845 0%, #0E0C24 55%, #07060F 100%);
+/* ── 色彩方向：页面默认是 Apple 式的中性底；另外两个方向在舞台里用自己的底 ── */
+.dbb-stage[data-look="lit"] {
+  --dbb-scene-bg: #F3EDF7;
+  background: linear-gradient(180deg, #ECE3F3, #F7F3FA 55%, #ECE3F3);
 }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .dbb-stage[data-look="lit"] { --dbb-scene-bg: #16131F; background: linear-gradient(180deg, #1B1726, #13111A 55%, #1B1726); }
+}
+:root[data-theme="dark"] .dbb-stage[data-look="lit"] { --dbb-scene-bg: #16131F; background: linear-gradient(180deg, #1B1726, #13111A 55%, #1B1726); }
 .dbb-stage[data-look="expanse"] {
   color-scheme: dark;
   --dbb-scene-bg: #0A0F14;
@@ -259,6 +262,6 @@ dbb-data-lens[on] { display: block; }
 
 /* 色彩方向的小样 */
 .dbb-sw { width: 30px; height: 30px; border-radius: 50%; display: block; flex: none; }
+.dbb-sw-apple { background: radial-gradient(circle at 42% 40%, #D6F0E6 0 14%, transparent 46%), conic-gradient(from 200deg, #A0BDE4, #9FD8C8, #B9D98A, #DD9939, #E06C74, #D9587B, #B7A2D8, #A0BDE4); box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(60, 60, 84, 0.16); }
 .dbb-sw-lit { background: radial-gradient(circle at 36% 32%, #fff 0 12%, #F2DDE6 34%, #D9CFEF 62%, #B9B2E6 100%); box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #9FDCC6; }
-.dbb-sw-aurora { background: radial-gradient(circle at 40% 36%, #F4F0FF 0 16%, #7E78B8 60%, #2A2358 100%); box-shadow: 0 0 10px 1px #8D5BFF, 0 0 0 2px #FF5EB8; }
 .dbb-sw-expanse { background: radial-gradient(circle at 26% 34%, #FFF1DC 0 6%, #CDB597 20%, #6B5B48 48%, #0B0F14 70%); box-shadow: 0 0 0 1.5px #3FC1C9; }

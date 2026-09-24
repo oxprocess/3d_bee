@@ -21,7 +21,7 @@ const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--ena
 const cases = [
   { page: 'index.html', size: [1440, 900], scheme: 'light', steps: ['#seal', '#resolve', '#dig', '#lens'] },
   { page: 'index.html', size: [390, 844], scheme: 'dark', steps: ['#inherit'] },
-  { page: 'lab.html', size: [1440, 900], scheme: 'light', clicks: ['seal', 'yes', 'iterate', 'burst'], looks: ['aurora', 'expanse', 'lit'] },
+  { page: 'lab.html', size: [1440, 900], scheme: 'light', clicks: ['seal', 'yes', 'iterate', 'burst'], looks: ['lit', 'expanse', 'apple'] },
 ];
 let failed = 0;
 for (const c of cases) {

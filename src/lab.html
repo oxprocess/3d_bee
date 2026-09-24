@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>derbeebee 形态实验台</title>
+<meta name="description" content="derbeebee 形态实验台：换珍珠、落一件事、挖到最深、打开接口透视，所有模块一起试。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700&family=Noto+Sans+SC:wght@400;500&display=swap">
+<link rel="stylesheet" href="./ui/dbb.css">
+<link rel="stylesheet" href="./pages/lab.css">
+<script type="importmap">{ "imports": { "three": "../node_modules/three/build/three.module.js" } }</script>
+</head>
+<body>
+<header class="bar">
+  <span class="wordmark">derbeebee</span>
+  <h1>形态实验台</h1>
+  <nav class="bar-nav" aria-label="页面">
+    <a href="./index.html" data-walk-link>形态走查</a>
+    <a href="./lab.html" aria-current="page">实验台</a>
+  </nav>
+  <div class="bar-actions">
+    <button type="button" id="lensBtn" class="ghost" aria-pressed="false">接口透视</button>
+    <button type="button" id="theme" class="ghost">跟随系统</button>
+  </div>
+</header>
+
+<div class="lab">
+  <aside class="left" aria-label="选一颗珍珠与挖掘深度">
+    <section>
+      <h2 class="cap">选一颗珍珠</h2>
+      <div class="picks" id="picks" role="group" aria-label="选一颗珍珠">
+        <button type="button" data-ledger="story"><span class="g"></span><b>爸妈出游</b><small>差一次就满 30 次</small></button>
+        <button type="button" data-ledger="birth"><span class="g"></span><b>诞生</b><small>还没有历史</small></button>
+        <button type="button" data-ledger="wide"><span class="g"></span><b>宽展</b><small>铺得开</small></button>
+        <button type="button" data-ledger="tight"><span class="g"></span><b>收束</b><small>圆而密</small></button>
+        <button type="button" data-ledger="lean"><span class="g"></span><b>偏展</b><small>朝一侧长</small></button>
+        <button type="button" data-ledger="turn"><span class="g"></span><b>转向</b><small>外圈偏了</small></button>
+      </div>
+    </section>
+    <section>
+      <h2 class="cap">挖掘深度</h2>
+      <dbb-depth-rail id="rail"></dbb-depth-rail>
+    </section>
+    <section class="legend">
+      <h2 class="cap">怎么碰它</h2>
+      <ul>
+        <li><b>拖动</b>转动（剖开后：左右转、上下俯仰）</li>
+        <li><b>滚轮 / 双指</b>挖深、退回</li>
+        <li><b>点剖面</b>选一代；再点，选一条细纹</li>
+        <li><b>点水面</b>看倒影；<b>点水滴</b>看预判</li>
+        <li><b>长按</b>数一数 · <b>双击</b>复位</li>
+        <li><kbd>←</kbd><kbd>→</kbd><kbd>+</kbd><kbd>−</kbd><kbd>Enter</kbd><kbd>C</kbd><kbd>Esc</kbd></li>
+      </ul>
+    </section>
+  </aside>
+
+  <main class="center">
+    <div class="stage-box">
+      <div id="stage"></div>
+      <p class="stage-note">示意 · 演示数据</p>
+    </div>
+    <dbb-timeline id="timeline"></dbb-timeline>
+    <section class="events" aria-label="让一件事发生">
+      <h2 class="cap">让一件事发生 <span>每一次点击，都是账本上的一行</span></h2>
+      <div class="ev-row">
+        <button type="button" data-ev="observe"><em>对话</em>说一句近况</button>
+        <div class="seal-group">
+          <button type="button" data-ev="seal"><em>预测</em>封存一个预判</button>
+          <label class="sr-only" for="sealCat">预判的类别</label>
+          <select id="sealCat" aria-label="预判的类别"></select>
+        </div>
+        <button type="button" data-ev="prepare"><em>准备</em>准备好</button>
+        <button type="button" data-ev="yes"><em>成长</em>结果：发生了</button>
+        <button type="button" data-ev="no"><em>成长</em>结果：没发生</button>
+        <button type="button" data-ev="iterate" class="iter"><em>成长</em>迭代时刻</button>
+      </div>
+      <div class="ev-row secondary">
+        <button type="button" data-ev="burst">再比较 10 次</button>
+        <button type="button" data-ev="story">从 18:12 讲一遍故事</button>
+        <button type="button" data-ev="count">数一数</button>
+      </div>
+    </section>
+  </main>
+
+  <aside class="right" aria-label="模块">
+    <dbb-layer-card id="layerCard"></dbb-layer-card>
+    <dbb-shadow-meter id="shadowMeter"></dbb-shadow-meter>
+    <dbb-seal-card id="sealCard"></dbb-seal-card>
+    <section class="dbb-card log-card">
+      <p class="dbb-eyebrow">账本 · 只追加</p>
+      <dbb-event-log id="log"></dbb-event-log>
+    </section>
+  </aside>
+</div>
+<script type="module" src="./pages/lab.js"></script>
+</body>
+</html>

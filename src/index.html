@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>derbeebee 3D 形态</title>
+<meta name="description" content="derbeebee 的 3D 形态：珍珠与倒影，一个阶段一个阶段地走一遍生长、交互与数据接口。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700&family=Noto+Sans+SC:wght@400;500&display=swap">
+<link rel="stylesheet" href="./ui/dbb.css">
+<link rel="stylesheet" href="./pages/walkthrough.css">
+<script type="importmap">{ "imports": { "three": "../node_modules/three/build/three.module.js" } }</script>
+</head>
+<body>
+<a class="skip" href="#cover">跳到正文</a>
+<header class="top">
+  <span class="wordmark">derbeebee</span>
+  <nav class="top-nav" aria-label="页面">
+    <a href="#cover" aria-current="page">形态走查</a>
+    <a href="./lab.html" data-lab-link>实验台</a>
+    <button type="button" id="theme" class="ghost">跟随系统</button>
+  </nav>
+</header>
+
+<div class="layout">
+<main class="chapters" id="main">
+
+<section class="ch cover" id="cover" data-preset="cover" data-label="封面">
+  <p class="eyebrow">derbeebee · 3D 形态梳理</p>
+  <h1 class="brand">它，和它的倒影</h1>
+  <p class="lede">事情线是它为你做了什么，形态线是它因此学会了什么。两条线同时在走。这一页把形态线一段一段走一遍：每一个阶段，珍珠、倒影、水面分别怎样变，用户能怎样碰它，每个细节从哪一个数据来。</p>
+  <dl class="defs">
+    <div><dt><i class="ic pearl" aria-hidden="true"></i>珍珠<span class="tag">本体</span></dt><dd>现在替你准备下一步的方法。检验期间，它不动。</dd></div>
+    <div><dt><i class="ic refl" aria-hidden="true"></i>倒影<span class="tag">影子</span></dt><dd>和它判断同一件事、正在练习的新方法。每一次结果，都让它变一点。</dd></div>
+    <div><dt><i class="ic ripple" aria-hidden="true"></i>涟漪</dt><dd>一件真实发生的事。只有结果落下，水面才会动。</dd></div>
+  </dl>
+  <ul class="gestures" aria-label="怎么碰它">
+    <li><b>拖动</b>转动它</li>
+    <li><b>双指张开</b>或 <b>Ctrl + 滚轮</b>往里挖一层</li>
+    <li><b>轻点</b>选中一代、一次</li>
+    <li><b>长按</b>数一数</li>
+    <li><b>双击</b>回到完整</li>
+  </ul>
+  <p class="hint mobile-only">右侧（手机上是顶部）的珍珠是活的，读到哪一段，它就演到哪一段。</p>
+</section>
+
+<section class="ch" id="lines" data-preset="lines" data-label="两条线">
+  <p class="eyebrow">总览</p>
+  <h2>两条线，一个循环</h2>
+  <p>按 Sutton 的框架，内核只有一个循环：观察 → 预测 → 行动 → 用结果更新预测方法。App 的四个标签一一对应这四步；3D 形态是同一个循环在身体上留下的痕迹。</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>App 标签</th><th>循环中的一步</th><th>事情线</th><th>形态线（3D）</th></tr></thead>
+      <tbody>
+        <tr><td>对话</td><td>观察</td><td>你说出近况</td><td>一道流光掠过：它在听。结构不变</td></tr>
+        <tr><td>预测</td><td>封存判断</td><td>事前写下预判</td><td>一滴水凝在珍珠与倒影之间；两者各自微亮</td></tr>
+        <tr><td>准备</td><td>依据预判行动</td><td>下一步已做好</td><td>水面平静，水滴随期限慢慢下沉</td></tr>
+        <tr><td>成长</td><td>用结果更新</td><td>结果来了</td><td>水滴落在倒影上，涟漪；倒影变一点，珍珠不动</td></tr>
+        <tr><td>成长 · 迭代时刻</td><td>替换方法</td><td>多次合格比较之后</td><td>光从水里升起，珍珠多一层；上一代退到里面</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="pull">每做一件事，形态就留下一处痕迹；每一处痕迹，都能在账本里找到对应的那一行。</p>
+</section>
+
+<section class="ch" id="birth" data-preset="birth" data-label="阶段 1 · 诞生">
+  <p class="eyebrow">阶段 1</p>
+  <h2>诞生：一颗完整的珍珠</h2>
+  <div class="two">
+    <div><h3>事情线</h3><p>还没有任何一件事。</p></div>
+    <div><h3>形态线</h3><p>一颗小小的珍珠，正圆。水里的倒影和它一模一样，清清楚楚。</p></div>
+  </div>
+  <p>为什么是正圆：形状只由经历决定。还没有经历，就没有理由朝哪一侧长。这颗核就是第 1 代：同一个身份，还没有属于你的学习历史。之后不管长成什么样，它都在最里面。</p>
+  <p class="api"><code>generations = [核]</code> · <code>shadow = null</code> → 倒影进入“镜像”状态，清晰度 1，与本体同步转动。</p>
+</section>
+
+<section class="ch" id="observe" data-preset="observe" data-label="阶段 2 · 对话">
+  <p class="eyebrow">阶段 2 · 对话 · 观察</p>
+  <h2>它在听</h2>
+  <div class="app-card" aria-label="App：对话">
+    <p class="ctx">此前，你聊过爸妈的出游安排、还没确定的酒店，以及带药和回家浇花的约定。</p>
+    <p class="bubble"><time>18:12</time>刚下班，有点累。</p>
+  </div>
+  <p>你只说状态，不下任务。它从状态和过往里认出哪件事还没了结。</p>
+  <p>形态上：一道流光从下往上掠过珍珠表面，像它抬了一下头。流光只表示“在听”，不改变任何结构。没有一件事被写进形状。</p>
+  <p class="api"><code>observe</code> → 表面流光一次。结构、倒影、水面都不变。</p>
+  <button type="button" class="replay" data-replay>再听一次</button>
+</section>
+
+<section class="ch" id="seal" data-preset="seal" data-label="阶段 3 · 预测">
+  <p class="eyebrow">阶段 3 · 预测 · 封存</p>
+  <h2>事情还没发生，判断已经写下</h2>
+  <dbb-seal-card></dbb-seal-card>
+  <p>形态上：一滴水凝在珍珠和倒影之间，悬着没落。本体和倒影同时微微发亮，亮度就是各自给的概率。</p>
+  <p>为什么是水滴：一般价值函数有三个部分：问题、期限、答案。水滴把三者装进一个物体里。它的颜色是哪一类事，它离水面的高度是离期限还有多远，珍珠和倒影的亮度是两个答案。数字旁边永远带着“演示估计，不是准确率”。</p>
+  <p class="api"><code>predictions[status=sealed]</code> → 水滴；<code>pBody / pShadow</code> → 本体与倒影的亮度；<code>category</code> → 水滴的淡色。</p>
+</section>
+
+<section class="ch" id="prepare" data-preset="prepare" data-label="阶段 4 · 准备">
+  <p class="eyebrow">阶段 4 · 准备 · 等待</p>
+  <h2>你想起来的时候，下一步已经做好了</h2>
+  <p>18:14，它准备好了爸妈出游要用的东西：大理三天的天气、订酒店、随身药盒、家里的安排，还有一键复制给爸妈的文字。</p>
+  <p>形态上：水面平静，珍珠不动。时间在走，水滴慢慢往下沉：离 22:00 越近，离水面越近。</p>
+  <p class="rule">纪律：时间流逝只让水滴下沉，不让珍珠生长。</p>
+  <p class="api"><code>(deadline − now) / (deadline − sealedAt)</code> → 水滴离水面的高度。</p>
+  <button type="button" class="replay" data-clock="2026-09-24T19:40">把时间拨到 19:40</button>
+</section>
+
+<section class="ch" id="resolve" data-preset="resolve" data-label="阶段 5 · 结果">
+  <p class="eyebrow">阶段 5 · 成长 · 结果到来</p>
+  <h2>珍珠没动，倒影变了一点</h2>
+  <p>20:10，爸妈真的来问了住宿，落在“22 点前”的窗口里。</p>
+  <p>水滴落下，正好落在倒影上：结果改变的是影子，不是本体。涟漪的大小就是这一次的意外程度：影子说 72%，事情发生了，意外是 0.28；如果没发生，意外是 0.72，涟漪会大得多。</p>
+  <p>倒影晃一下，变一点：它身上正在练的那一层长了一点，也清楚了一点。珍珠纹丝不动。</p>
+  <dbb-shadow-meter></dbb-shadow-meter>
+  <p class="rule">一次结果只做更新，不做取舍。</p>
+  <p class="api"><code>resolve</code> → <code>|结果 − p影子|</code> 决定涟漪振幅；<code>shadow.lamellae</code> 追加一条 → 倒影的形状、清晰度、同步度随之变化。</p>
+  <button type="button" class="replay" data-replay>再落一次</button>
+</section>
+
+<section class="ch" id="inherit" data-preset="inherit" data-label="阶段 6 · 迭代时刻">
+  <p class="eyebrow">阶段 6 · 成长 · 迭代时刻</p>
+  <h2>经得起检验，才长到它身上</h2>
+  <p>满 30 次合格比较，并且影子比本体更准，就到了迭代时刻。</p>
+  <p>形态上：水下先亮起来；一道光从倒影的位置升起，接到珍珠身上；珍珠外面长出新的一层，先是练习时的薄荷色，再慢慢沉成它自己的颜色（家人）。原来的外表面没有消失，它退到了里面，成为一圈年轮。倒影重新和它一模一样，清清楚楚，等下一次练习。</p>
+  <p>被继承或淘汰的是方法，不是 derbeebee 本身。身份一直是这一颗：外轮廓从头到尾都完整，只是更大了一圈。</p>
+  <p>没通过的时候：倒影往水里沉一下，继续练；珍珠不变。影子也会输，这一点必须让用户看得见。</p>
+  <p class="api"><code>iterate</code> → <code>canInherit</code> ? 继承（光柱、新一层、上一代的 <code>retiredAt</code>）: 继续练（倒影下沉一下）。</p>
+  <button type="button" class="replay" data-replay>再看一次</button>
+</section>
+
+<section class="ch" id="dig" data-preset="dig" data-label="挖掘">
+  <p class="eyebrow">交互 · 挖掘</p>
+  <h2>一层一层，挖到最深</h2>
+  <p>可以直接在 3D 里展开，但展开的顺序要和数据的粒度一一对应。一共三级，越往里，数据越细：</p>
+  <ol class="levels">
+    <li><b>形</b><span>整颗珍珠。身份，以及你的生活铺在哪几个方向。</span></li>
+    <li><b>层</b><span>剖开后的一圈。一圈是一代，一代是一个经得起检验、留下来的方法。</span></li>
+    <li><b>纹</b><span>一圈里的一条细线。一条是一次真实的比较：那一天、那件事、两个概率、谁更近。这是最深的一层数据。</span></li>
+  </ol>
+  <h3>怎么展开</h3>
+  <p><b>开蚌。</b>上半抬起，绕着离你最远的一侧向后翻开；下半露出赤道剖面。工作、家人、健康、朋友都在这个面上，哪一侧厚一眼就看得到。盖子背面是同一个剖面的镜像，像打开的晶洞。</p>
+  <p><b>剥层。</b>再往里，最外一层从剖面那道边开始化开，剖面上留下一道虚线，标出它后来会长到哪里。深度就是时间：剥掉几层，看到的就是几代以前的它。最深处是核，也就是诞生时的它。</p>
+  <p><b>聚焦。</b>点一圈，镜头推近那一代；再点，选中其中一条细纹。卡片上那一排竖线是同一代的细纹，两处都能点。</p>
+  <div class="inline-demo">
+    <dbb-depth-rail></dbb-depth-rail>
+    <dbb-layer-card></dbb-layer-card>
+  </div>
+  <div class="table-wrap">
+    <table class="compact">
+      <thead><tr><th>也考虑过</th><th>为什么不用</th></tr></thead>
+      <tbody>
+        <tr><td>爆炸图（各层向外飞开）</td><td>层数一多就互相遮挡；看不出哪一侧厚。</td></tr>
+        <tr><td>楔形切口（切掉一块）</td><td>只露出一两个方向的厚薄，读不全四类事。</td></tr>
+        <tr><td>镜头钻进去</td><td>容易迷路，手机上尤其；也回答不了“长了几代”。</td></tr>
+        <tr><td>X 光透视</td><td>层色叠在一起，颜色读不出来；也失去了珍珠母的质感。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="api">手势：双指张开 / Ctrl + 滚轮 / <kbd>+</kbd> <kbd>−</kbd> 逐层；每过一层，手机轻震一下。<code>stage.setDepth(d)</code>，<code>d = 0</code> 外形，<code>1</code> 剖面，<code>2…N</code> 剥到第 <code>N − d + 1</code> 代。</p>
+</section>
+
+<section class="ch" id="interact" data-preset="interact" data-label="元素与互动">
+  <p class="eyebrow">交互 · 每一个元素</p>
+  <h2>让人感觉到它是活的</h2>
+  <p>活的感觉来自三件事：它有重量，它注意到你，它按自己的节奏在。三件事都不碰学习数据：结构上的每一处变化，只来自账本。</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>元素</th><th>用户做什么</th><th>它怎么回应</th><th>为什么</th></tr></thead>
+      <tbody>
+        <tr><td>珍珠</td><td>拖动</td><td>跟手转；松手后带惯性滑一会儿，再像不倒翁一样慢慢扶正</td><td>它有重量。偏展的那一侧更重，静止时微微低一点，姿态来自它自己的形状</td></tr>
+        <tr><td>珍珠</td><td>按住</td><td>按住的地方泛起一点暖色；转动时暖色跟着那一点走，松手后慢慢退去</td><td>被触碰的感觉。只是温度，不是结构</td></tr>
+        <tr><td>珍珠</td><td>长按</td><td>数一数：按代数轻轻亮起，手机跟着轻震</td><td>用身体数出它长了几代</td></tr>
+        <tr><td>珍珠</td><td>什么都不做</td><td>呼吸，约 5.6 秒一次，极轻。很久没人理它，呼吸变慢、光暗一点；你回来，它醒过来</td><td>在场感。呼吸不对应任何数据，所以永远不会被误读成“它在学习”</td></tr>
+        <tr><td>珍珠</td><td>指针靠近</td><td>微微转向指针，不超过 5°</td><td>它注意到你</td></tr>
+        <tr><td>倒影</td><td>转动珍珠</td><td>跟着转，但慢半拍；两者最近的判断越一致，跟得越紧</td><td>它不是镜像，是另一个正在练习的自己</td></tr>
+        <tr><td>倒影</td><td>看</td><td>越练越准越清楚；带一点薄荷色，表示正在练</td><td>生活经验就能读懂：看不清，就是还没练好</td></tr>
+        <tr><td>水面</td><td>点</td><td>只泛起一点水光，不起涟漪；弹出倒影正在练什么、练到哪</td><td>涟漪只留给真实的结果，触摸不能伪造结果</td></tr>
+        <tr><td>水滴</td><td>看、点</td><td>悬着就是已封存；越低越接近期限；点它看那个预判</td><td>事前写下、事后揭晓，一眼可见</td></tr>
+        <tr><td>涟漪</td><td></td><td>只在结果到来时出现；大小是意外程度，颜色是那一类事</td><td>水面的每一次变化，都对应账本上的一行</td></tr>
+        <tr><td>光柱</td><td></td><td>只在继承时出现</td><td>形态上最隆重的一刻，一年只有几次，所以留给它最大的动作</td></tr>
+        <tr><td>年轮与细纹</td><td>点</td><td>一圈一代，一条一次比较；意外越大，纹越深</td><td>最深一层的数据，可以一条条读</td></tr>
+        <tr><td>方向标</td><td></td><td>只在剖开时出现</td><td>读的时候才给坐标，平时它只是一颗干净的珍珠</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>高级感从哪里来</h3>
+  <ul class="bullets">
+    <li><b>克制。</b>全部颜色来自同一个珍珠母色系；品牌渐变只用在一个标题上。</li>
+    <li><b>真实的物理。</b>惯性、扶正、折射、涟漪的波速与衰减都按真实的样子做，只是更慢一点、更轻一点。</li>
+    <li><b>动作的分量跟事情的分量一致。</b>呼吸一直在，流光偶尔出现，涟漪一件事一次，光柱一代一次。越重要的变化越少见。</li>
+    <li><b>声音与触觉。</b>默认静音。打开后只有两种声音：结果落水的一声轻响，意外越大音越低；继承时一声清亮的玻璃音。触觉只在“过一层”和“继承”时出现。</li>
+    <li><b>减少动态效果。</b>系统开启后，呼吸、注视、惯性关闭，涟漪和光柱改成一次淡入淡出。</li>
+  </ul>
+</section>
+
+<section class="ch" id="shapes" data-preset="shapes" data-label="形状从哪里来">
+  <p class="eyebrow">生长规则</p>
+  <h2>它的形状，是你的经历留下的</h2>
+  <dl class="rules">
+    <div><dt>长在哪里</dt><dd>新的一层，朝长出它的那类事所在的一侧长。工作、家人、健康、朋友围在水平一圈。</dd></div>
+    <div><dt>长多厚</dt><dd>那一代被检验得越多，这一层越厚。</dd></div>
+    <div><dt>鼓多少</dt><dd>第一次遇到的新事，让它朝那一侧鼓出来；同一件事反复练，新的一层就均匀地包一圈。</dd></div>
+    <div><dt>什么颜色</dt><dd>层色来自长出它的那类事；同一类事每多练一代，颜色深一点。</dd></div>
+    <div><dt>什么时候长</dt><dd>只在继承时。日子过去，它不会自己变。</dd></div>
+  </dl>
+  <div class="shape-pick" role="group" aria-label="换一颗珍珠">
+    <button type="button" data-ledger="wide"><span class="g"></span><b>宽展</b><small>经历铺得开，它就长得宽</small></button>
+    <button type="button" data-ledger="tight"><span class="g"></span><b>收束</b><small>同几件事反复练，圆而密</small></button>
+    <button type="button" data-ledger="lean"><span class="g"></span><b>偏展</b><small>一件事占了大部分，朝那边长</small></button>
+    <button type="button" data-ledger="turn"><span class="g"></span><b>转向</b><small>里圈均匀，外圈偏了</small></button>
+  </div>
+  <p class="note-box"><b>为什么多了“鼓多少”这一条。</b>只按原来的四条，同几件事反复出现，会让它朝那几个方向鼓成橄榄形，长不出“圆而密”的收束。之前的剖面页是用一个全局压扁系数把宽展压扁的，那不是规则长出来的。加上“新事鼓、旧事匀”，四种形状都能从数据里长出来，而不是画出来。缩略图就是赤道剖面，和 3D 用的是同一条规则。</p>
+</section>
+
+<section class="ch" id="yours" data-preset="yours" data-label="只属于你">
+  <p class="eyebrow">身份</p>
+  <h2>每一颗，都不一样</h2>
+  <div class="trio" id="trio"></div>
+  <p>同样的长法，经历不同，长成的样子就不同。它由你的经历长成，所以只属于你。</p>
+  <p class="vow">它属于你，放大你；它不是你。</p>
+</section>
+
+<section class="ch" id="lens" data-preset="lens" data-label="细节即接口">
+  <p class="eyebrow">数据接口</p>
+  <h2>每一个细节，都是一个接口</h2>
+  <p>3D 舞台和所有卡片只读一个结构：由账本推导出的形态状态。换成真实的学习数据，只需要按同样的格式写账本，所有细节自动跟着变。打开右上角的“接口透视”，每个细节旁边会标出它的数据来源和当前值。</p>
+  <div class="table-wrap">
+    <table class="bindings" id="bindings">
+      <thead><tr><th>元素</th><th>视觉细节</th><th>数据字段</th><th>何时变</th><th>当前值</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <h3>账本长这样</h3>
+<pre class="code"><code>{
+  "policy": { "minComparisons": 30 },
+  "categories": [{ "id": "family", "label": "家人", "color": "#EFC3CF", "azimuth": 180 }],
+  "generations": [
+    { "gen": 1, "bornAt": "2026-01-06T09:00" },
+    { "gen": 2, "bornAt": "2026-03-18T21:40", "category": "family",
+      "source": "爸妈出游的准备", "learned": "出发前两天，先把酒店和药准备好。",
+      "comparisons": 34, "novelty": 0.9,
+      "lamellae": [{ "at": "…", "outcome": true, "pBody": 0.64, "pShadow": 0.72, "note": "爸妈问起酒店" }] }
+  ],
+  "shadow": { "category": "friends", "source": "周末的约饭", "lamellae": [ … ] },
+  "predictions": [{ "id": "p-hotel", "question": "今晚 22 点前，爸妈会找你确认住宿",
+                    "deadline": "2026-09-24T22:00", "pBody": 0.64, "pShadow": 0.72, "status": "sealed" }],
+  "events": [ … 只追加，不改写 … ]
+}</code></pre>
+</section>
+
+<section class="ch" id="modules" data-preset="modules" data-label="可复用模块">
+  <p class="eyebrow">模块</p>
+  <h2>拆成可以复用的几块</h2>
+  <div class="table-wrap">
+    <table class="compact">
+      <thead><tr><th>模块</th><th>做什么</th><th>接口</th></tr></thead>
+      <tbody>
+        <tr><td><code>core/ledger.js</code></td><td>学习账本：只追加的事件、继承规则</td><td><code>createStore(ledger)</code> · <code>dispatch({type})</code> · <code>subscribe(fn)</code></td></tr>
+        <tr><td><code>core/view.js</code></td><td>从账本推导形态状态；接口对照表</td><td><code>deriveView(ledger)</code> · <code>BINDINGS</code></td></tr>
+        <tr><td><code>core/growth.js</code></td><td>生长规则：一代怎样变成一层</td><td><code>layerSpec</code> · <code>radiiField</code> · <code>restPose</code></td></tr>
+        <tr><td><code>three/stage.js</code></td><td>3D 珍珠、倒影、水面、水滴、光柱；手势与挖掘</td><td><code>new PearlStage(el)</code> · <code>setView</code> · <code>apply(change)</code> · <code>setDepth</code> · <code>select</code> · 事件 <code>select / depth / tap / count</code></td></tr>
+        <tr><td><code>&lt;dbb-seal-card&gt;</code></td><td>封存的预判</td><td><code>el.bind({ store })</code></td></tr>
+        <tr><td><code>&lt;dbb-shadow-meter&gt;</code></td><td>倒影在练什么、练到哪</td><td><code>el.bind({ store })</code></td></tr>
+        <tr><td><code>&lt;dbb-layer-card&gt;</code></td><td>一代的来历与细纹</td><td><code>el.bind({ stage })</code></td></tr>
+        <tr><td><code>&lt;dbb-depth-rail&gt;</code> · <code>&lt;dbb-timeline&gt;</code></td><td>深度与时间：同一根轴的两种样子</td><td><code>el.bind({ stage })</code></td></tr>
+        <tr><td><code>&lt;dbb-data-lens&gt;</code></td><td>接口透视</td><td><code>el.bind({ stage }); el.on = true</code></td></tr>
+        <tr><td><code>&lt;dbb-event-log&gt;</code> · <code>&lt;dbb-shape-glyph&gt;</code></td><td>账本记录 · 形态缩略图</td><td><code>el.bind({ store })</code> · <code>el.data = view</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+<pre class="code"><code>import { createStore } from './core/ledger.js';
+import { PearlStage } from './three/stage.js';
+import './ui/index.js';
+
+const store = createStore(myLedger);            // 真实数据：同样的账本格式
+const stage = new PearlStage(document.querySelector('#pearl'));
+stage.setView(store.view);
+store.subscribe((change) => stage.apply(change)); // 每一条记录 → 形态上的一处变化
+
+document.querySelector('dbb-shadow-meter').bind({ store });
+document.querySelector('dbb-layer-card').bind({ stage });
+
+store.dispatch({ type: 'resolve', id: 'p-hotel', outcome: true });</code></pre>
+  <p>全部模块可以在<a href="./lab.html" data-lab-link>实验台</a>里一起试：换珍珠、落一件事、打开接口透视。</p>
+</section>
+
+<section class="ch" id="fixes" data-preset="fixes" data-label="需要统一的口径">
+  <p class="eyebrow">口径</p>
+  <h2>需要统一的地方</h2>
+  <p>这一版已经按下面的口径写好；页面、App 和之前的几份稿子需要一起改。</p>
+  <ol class="fixes">
+    <li><b>本体与影子的数字。</b>统一为本体 64%、影子 72%。结果发生了，影子更近，与后面的继承一致。</li>
+    <li><b>继承的门槛。</b>图 10 写 24 次，剖面页写“满 30 次”，而剖面页里又有 22 次就留下来的层。统一为一个规则：满 30 次合格比较，且影子更准。每一层的次数都不少于 30。</li>
+    <li><b>第几代怎么数。</b>核就是第 1 代（诞生），每继承一次加一代。“数一数”从核开始数；剖面页的核也要标上。</li>
+    <li><b>“突变”改为“新形态”。</b>形态由真实结果决定，不是随机变异。</li>
+    <li><b>身份不变。</b>去掉“全新外在自我”和“更高级”；继承之后变的是方法和结构，轮廓始终完整。</li>
+    <li><b>主权口径补全。</b>凡出现“外在自我”，都写全：它属于你，放大你；它不是你。</li>
+    <li><b>时间顺序。</b>先 18:12 准备好，再 20:10 爸妈来问。</li>
+    <li><b>继承或淘汰的主语是方法。</b>“触发迭代时刻，决定哪一种方法留下。”</li>
+    <li><b>触摸不起涟漪。</b>形态页里“点一下水面，落下一件真实的事”是演示；产品里点水面只泛水光，涟漪只来自结果。演示按钮要写明“模拟”。</li>
+    <li><b>收束的颜色。</b>形态页用了另选的蓝紫色；按规则，颜色来自长出它的事（工作、家人），“少而深”是同一类事一代代加深。</li>
+    <li><b>练习色和健康色太像。</b>薄荷色的“练习中”和健康的颜色接近，所以练习状态用虚线、流光和模糊来区分，不只靠颜色。</li>
+    <li><b>示意标注。</b>只要形态还不是由真实学习记录驱动，页面上就标“示意”，和 App 里的“演示估计”“演示数据”一致。</li>
+  </ol>
+</section>
+
+<footer class="foot">形态为示意：展示的是生长规则。页面中的事情、次数和日期均为演示。天羽蜂科技</footer>
+</main>
+
+<aside class="stage-col" aria-label="derbeebee 的 3D 形态">
+  <div class="stage-wrap">
+    <div id="stage"></div>
+    <div class="stage-bar">
+      <p class="stage-label" id="stageLabel" aria-live="polite">封面</p>
+      <div class="stage-actions">
+        <button type="button" id="lensBtn" class="ghost" aria-pressed="false">接口透视</button>
+        <button type="button" id="replayBtn" class="ghost">重放</button>
+      </div>
+    </div>
+    <dbb-depth-rail class="stage-rail"></dbb-depth-rail>
+    <p class="stage-note">示意 · 演示数据</p>
+  </div>
+</aside>
+</div>
+<script type="module" src="./pages/walkthrough.js"></script>
+</body>
+</html>

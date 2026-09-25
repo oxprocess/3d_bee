@@ -18,6 +18,8 @@ const BASE = {
 };
 
 const NACRE = { roughness: 0.26, metalness: 0.12, iridescence: 1, irRange: [220, 620], sheen: 0.6, sheenColor: '#E3D6F6', envMapIntensity: 0.95 };
+// Apple 式的颜色全在着色器里算（光谱 + 玻璃），物理材质只留最基本的一层：不算虹彩、清漆、绒光，省下手机上的算力
+const GLASS_BASE = { roughness: 0.3, metalness: 0, iridescence: 0, irRange: [220, 620], sheen: 0, sheenColor: '#FFFFFF', envMapIntensity: 0.2, clearcoat: 0 };
 
 export const LOOKS = {
   apple: {
@@ -25,8 +27,20 @@ export const LOOKS = {
     label: 'Apple Intelligence 式',
     note: '光谱在身体里，没有光晕；颜色在它长出来的那一侧',
     env: 'studio',
-    material: NACRE,
+    material: GLASS_BASE,
     spectral: true,
+    // 釉面月光石：折射进身体取色的深度、釉面反射的强度、磨砂颗粒、年轮壳的亮度；摄影棚（线性色值）
+    glass: {
+      depth: 0.36,
+      glaze: 1,
+      frost: 0,
+      shells: 0.12,
+      adular: 0.22,
+      studio: {
+        light: { sky: [0.92, 0.92, 0.95], floor: [0.7, 0.7, 0.75], key: [2.4, 2.4, 2.45] },
+        dark: { sky: [0.07, 0.07, 0.09], floor: [0.02, 0.02, 0.03], key: [1.9, 1.9, 1.95] },
+      },
+    },
     aurora: 'none',
     mute: false,
     pearl: '#F4F4F8',

@@ -55,6 +55,7 @@ const PRESETS = {
   yours: () => storyTo(store, 4, { animate: false }),
   lens: () => storyTo(store, 1, { animate: false }),
   color: () => { setLook(chapterLook); storyTo(store, 4, { later }); },
+  glass: () => { load(store, 'wide'); later(() => stage.nudge(0.9, 0), 900); },
   modules: () => {},
   fixes: () => {},
 };

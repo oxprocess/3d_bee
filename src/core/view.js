@@ -119,6 +119,7 @@ export const BINDINGS = [
   { id: 'layers', element: '层', visual: '层数 = 代数', field: 'generations.length', when: '继承时', value: (v) => `${v.layers.length} 层` },
   { id: 'outer', element: '最外一层', visual: '颜色、厚度', field: 'generations[-1].category · comparisons', when: '继承时', value: (v) => { const L = v.layers[v.layers.length - 1]; return L.core ? '核' : `${v.cats.get(L.category)?.label} · ${L.n} 次`; } },
   { id: 'spectrum', element: '颜色', visual: '每类事的颜色在它长出来的一侧；长得越多，那一片越宽；代数越多，颜色越浓', field: 'categories[].azimuth · Σ 各代厚度（按类别） · generations.length', when: '继承时', value: (v) => spectrumShare(v).slice(0, 3).map((x) => `${x.label} ${Math.round(x.share * 100)}%`).join(' · ') || '诞生：很淡的一圈' },
+  { id: 'shells', element: '年轮壳', visual: '身体里隐约的一圈圈，一圈是一代', field: 'generations.length · 每一代的平均半径之比', when: '继承时', value: (v) => (v.layers.length > 1 ? `${v.layers.length - 1} 圈` : '还没有') },
   { id: 'lamellae', element: '细纹', visual: '每层里的细线，一条 = 一次比较', field: 'generations[k].lamellae[]', when: '继承时冻结', value: (v) => `${v.layers.reduce((a, L) => a + L.lamellae.length, 0)} 条` },
   { id: 'pose', element: '静止姿态', visual: '重的一侧微微低一点', field: '由外形算出的质心', when: '继承时', value: (v) => `${((v.pose.angle * 180) / Math.PI).toFixed(1)}°` },
   { id: 'shadowShape', element: '倒影', visual: '比珍珠多出的那一层', field: 'shadow.lamellae.length / policy.minComparisons', when: '每次结果', value: (v) => (v.shadow.mode === 'mirror' ? '一模一样' : `${v.shadow.n}/${v.policy.minComparisons}`) },

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 export const MAX_LAYERS = 24;
 export const MAX_LAMELLAE = 64;
 export const MAX_RIPPLES = 8;
+export const MAX_SHELLS = 12;
 
 // 3D simplex noise（Ashima Arts / Stefan Gustavson，MIT）
 export const NOISE_GLSL = /* glsl */ `
@@ -95,17 +96,47 @@ export function nacreShared() {
     uSpecBottom: { value: new THREE.Vector3(0.7, 0.07, -0.05) },
     uSpecKey: { value: new THREE.Vector3(-0.45, 0.8, 0.4).normalize() },
     uSpecDark: { value: 0 },
+    // 玻璃（釉面月光石）：折射进身体取色的深度、釉面反射、磨砂颗粒；摄影棚；身体里的年轮壳
+    uIor: { value: 1.45 },
+    uInnerDepth: { value: 0.36 },
+    uGlaze: { value: 1 },
+    uFrost: { value: 0.014 },
+    uMirrorY: { value: 1 },
+    uPointer: { value: new THREE.Vector2() },
+    uStudioSky: { value: new THREE.Color(0.92, 0.92, 0.95) },
+    uStudioFloor: { value: new THREE.Color(0.72, 0.72, 0.77) },
+    uStudioKey: { value: new THREE.Color(2.4, 2.4, 2.45) },
+    uShellN: { value: 0 },
+    uShellRho: { value: new Float32Array(MAX_SHELLS) },
+    uShellCol: { value: Array.from({ length: MAX_SHELLS }, () => new THREE.Color()) },
+    uShellAmt: { value: 0 },
+    // 月光石的光：身体里浮着的一片柔光（方向是世界坐标里的主光，跟着指针）
+    uAdular: { value: 0 },
+    uAdularCol: { value: new THREE.Color(0.9, 0.92, 1.0) },
+    uGlowKey: { value: new THREE.Vector3(-0.52, 0.6, 0.6).normalize() },
   };
 }
 
 // 光谱的颜色场。颜色挂在珍珠自己身上（跟着它转），每一类事的颜色在它长出来的那一侧；
 // 两极各有一种颜色（顶上清凉的薄荷、底下兰紫）。
 // 混色在 OKLab（感知均匀的颜色空间）里做：亮度过渡均匀，不会有一道比两边都亮的黄，也不会突然跳色。
+//
+// 材质是“釉面月光石”：
+//   光在里面   视线折射进身体，在表面下一段深度处取色；转动时，里面的颜色和表面的反光错开，有深度
+//   年轮壳     每一代的外壳在身体里，视线擦过它的地方亮一圈（月光石的光来自内部的层；玛瑙一圈是一段生长）
+//   磨砂       极细的颗粒，光是柔的
+//   釉面       清透的一层：反射摄影棚的柔光箱与灯带，掠射处按菲涅耳变亮（Liquid Glass 的边）；主光箱跟着指针
+//   没有光晕   所有的光都在轮廓以内
 export const SPECTRAL_GLSL = /* glsl */ `
 #define DBB_MAXC 8
+#define DBB_MAXS ${MAX_SHELLS}
 uniform float uSpec; uniform float uSpecN; uniform float uCatAz[DBB_MAXC]; uniform vec3 uCatLab[DBB_MAXC]; uniform float uCatW[DBB_MAXC];
 uniform float uSpecMature; uniform float uSpecTime; uniform float uSpecBoost;
 uniform vec3 uSpecTop; uniform vec3 uSpecBottom; uniform vec3 uSpecKey; uniform float uSpecDark;
+uniform float uIor; uniform float uInnerDepth; uniform float uGlaze; uniform float uFrost; uniform float uMirrorY; uniform vec2 uPointer;
+uniform vec3 uStudioSky; uniform vec3 uStudioFloor; uniform vec3 uStudioKey;
+uniform float uShellN; uniform float uShellRho[DBB_MAXS]; uniform vec3 uShellCol[DBB_MAXS]; uniform float uShellAmt;
+uniform float uAdular; uniform vec3 uAdularCol;
 vec3 dbbOklabToLinear(vec3 c) {
   float l_ = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
   float m_ = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
@@ -116,8 +147,8 @@ vec3 dbbOklabToLinear(vec3 c) {
     -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
     -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s);
 }
-vec3 dbbSpectral(vec3 local, vec3 nV, vec3 vV, vec3 nW) {
-  vec3 d = normalize(local);
+// 颜色场：珍珠自己坐标里的方向 d 上是什么颜色（OKLab）
+vec3 dbbField(vec3 d) {
   float T = uSpecTime;
   // 缓慢流动：色带轻轻摆动、两极的边界轻轻起伏；哪一类在哪一侧不变
   float n1 = dbb_snoise(d * 0.85 + vec3(T * 0.04, T * 0.06, -T * 0.03));
@@ -127,7 +158,7 @@ vec3 dbbSpectral(vec3 local, vec3 nV, vec3 vV, vec3 nW) {
   vec2 U = vec2(0.0), AB = vec2(0.0);
   float Ls = 0.0, Cs = 0.0, ws = 0.0;
   // 每一类事占一片：自己的方位上最强，分量越大这一片越宽；一次都没长过的类别也留一点影子。
-  // 权重先平方再归一化：每一片中间是比较纯的颜色，交界处是一段宽而柔和的过渡（参考图就是这样的几块色区）
+  // 权重先平方再归一化：每一片中间是比较纯的颜色，交界处是一段宽而柔和的过渡
   float eq = 1.0 - 0.6 * y * y;
   for (int i = 0; i < DBB_MAXC; i++) {
     if (float(i) >= uSpecN) break;
@@ -155,16 +186,47 @@ vec3 dbbSpectral(vec3 local, vec3 nV, vec3 vV, vec3 nW) {
   // 绿到琥珀之间是一段偏暖的橄榄色，绿到兰紫之间是一段柔和的灰——像光在磨砂的身体里散开
   float coh = length(U);
   vec2 ab = mix(AB, U / max(coh, 1e-4) * Cs, smoothstep(0.6, 0.95, coh));
-  float L = Ls;
   float C = length(ab);
   vec2 h = C > 1e-5 ? ab / C : vec2(1.0, 0.0);
   // 每一片颜色内部也有一点起伏（色相 ±10° 缓慢漂移）：像光在里面流动，不是一块平涂
   float hj = 0.17 * dbb_snoise(d * 1.35 + vec3(7.0 - T * 0.05, T * 0.03, 3.0 + T * 0.04));
   h = vec2(h.x * cos(hj) - h.y * sin(hj), h.x * sin(hj) + h.y * cos(hj));
+  return vec3(Ls, h * C);
+}
+// 摄影棚（世界坐标）：上亮下暗；左上方一块大而柔的柔光箱，跟着指针轻轻移动（光跟着你的注意力）。
+// 磨砂的表面反射是糊的：柔光箱在上面只是一片柔和的亮面，不是一扇清楚的窗
+vec3 dbbStudio(vec3 r) {
+  vec3 c = mix(uStudioFloor, uStudioSky, smoothstep(-0.5, 0.8, r.y));
+  vec3 up = vec3(0.0, 1.0, 0.0);
+  vec3 kd = normalize(vec3(-0.52 + 0.3 * uPointer.x, 0.6 + 0.2 * uPointer.y, 0.6));
+  float dk = dot(r, kd);
+  if (dk > 0.0) {
+    vec3 ku = normalize(cross(up, kd));
+    vec3 kv = cross(kd, ku);
+    vec2 q = vec2(dot(r, ku), dot(r, kv)) / max(dk, 0.2);
+    float sd = length(max(abs(q) - vec2(0.12, 0.08), 0.0)) - 0.14;
+    c += uStudioKey * (1.0 - smoothstep(-0.22, 0.3, sd)) * smoothstep(0.0, 0.3, dk);
+  }
+  return c;
+}
+// local：表面点（珍珠自己的坐标）；viewL / normL：同一坐标里朝向镜头的方向与法线
+// nV / vV：视图坐标里的法线与视线；nW / vW：世界坐标里的法线与视线
+vec3 dbbGlass(vec3 local, vec3 viewL, vec3 normL, vec3 keyL, vec3 nV, vec3 vV, vec3 nW, vec3 vW) {
+  float f = clamp(dot(nV, vV), 0.0, 1.0);
+  // 光在里面：视线折射进身体，在表面下一段深度处取色
+  vec3 V = normalize(viewL);
+  vec3 N = normalize(normL);
+  if (dot(N, V) < 0.0) N = -N;
+  float r = max(length(local), 1e-4);
+  vec3 Tr = refract(-V, N, 1.0 / uIor);
+  if (dot(Tr, Tr) < 1e-6) Tr = -N;
+  vec3 lab = dbbField(normalize(local + Tr * r * uInnerDepth));
+  float L = lab.x;
+  float C = length(lab.yz);
+  vec2 h = C > 1e-5 ? lab.yz / C : vec2(1.0, 0.0);
   // 事件：颜色浓一阵
   C *= 1.0 + 0.3 * uSpecBoost;
-  // 深度：正对你的地方像光透过来，浅一点；越到边缘看得越厚，颜色越浓
-  float f = clamp(dot(nV, vV), 0.0, 1.0);
+  // 深度：正对你的地方像光透过来，柔一点；越到边缘看得越厚，颜色越浓
   float e = pow(1.0 - f, 1.6);
   L += 0.025 * f * f - 0.02 * e;
   C *= 1.0 - 0.25 * f * f + 0.38 * e;
@@ -174,11 +236,54 @@ vec3 dbbSpectral(vec3 local, vec3 nV, vec3 vV, vec3 nW) {
   C *= mix(0.28, 1.0, uSpecMature);
   L = mix(0.95, L, mix(0.35, 1.0, uSpecMature));
   L -= 0.04 * uSpecDark;
-  vec3 col = clamp(dbbOklabToLinear(vec3(L, h * C)), 0.0, 1.0);
-  // 左上方一点柔光、一道很细的亮边：有体积，但没有高光，也不反射环境
-  float K = dot(nW, uSpecKey) * 0.5 + 0.5;
-  col *= 0.92 + 0.11 * K;
-  col += vec3(1.0) * pow(1.0 - f, 6.0) * (0.04 + 0.14 * K) * (1.0 - uSpecDark * 0.6);
+  vec3 inner = clamp(dbbOklabToLinear(vec3(L, h * C)), 0.0, 1.0);
+  // 倒影：世界坐标里的 y 翻回来，看起来才是同一个东西在水里的样子
+  vec3 nWm = normalize(vec3(nW.x, nW.y * uMirrorY, nW.z));
+  vec3 vWm = normalize(vec3(vW.x, vW.y * uMirrorY, vW.z));
+  float K = dot(nWm, uSpecKey) * 0.5 + 0.5;
+  inner *= 0.92 + 0.11 * K;
+#ifndef DBB_DISSOLVE
+  // 年轮壳：身体里每一代的外壳（按平均半径的比例）。视线擦过一层外壳时，光在那一层里走得最长，
+  // 所以那里亮一圈（月光石的光来自内部的层）；隔着磨砂，圈是柔的；越往里越暗
+  if (uShellAmt > 0.001) {
+    vec3 O = local / r;
+    float b = dot(O, Tr);
+    float p = sqrt(max(0.0, 1.0 - b * b)); // 折射后的视线离中心最近的距离（以外层为 1）
+    vec3 acc = vec3(0.0);
+    for (int k = 0; k < DBB_MAXS; k++) {
+      if (float(k) >= uShellN) break;
+      float rho = uShellRho[k];
+      float x = (rho - p) / 0.02;
+      acc += uShellCol[k] * exp(-x * x) * exp(-2.2 * sqrt(max(0.0, 1.0 - rho * rho)));
+    }
+    inner += acc * uShellAmt;
+  }
+#endif
+  // 月光石的光：光被身体里的层反射出来，是一片浮在表面以下的柔光。里面的层比表面弯得更厉害，
+  // 所以转动时它比表面的高光走得慢——深度就是这样看出来的。它也跟着指针（光跟着你的注意力）
+  if (uAdular > 0.001) {
+    vec3 Q = local + Tr * r * 0.5;
+    vec3 ni = normalize(Q);
+    vec3 rr = reflect(Tr, -ni);
+    float a = max(dot(normalize(rr), normalize(keyL)), 0.0);
+    float glow = pow(a, 5.0);
+    inner += uAdularCol * glow * uAdular * mix(0.5, 1.0, uSpecMature);
+  }
+  // 磨砂：极细的颗粒（默认关：在这个观看距离上看不出来，只剩噪点）
+  if (uFrost > 0.0) inner *= 1.0 + uFrost * dbb_snoise(local * 46.0);
+  // 磨砂的表面：反射是糊的，只在掠射处慢慢变亮（菲涅耳），而且变亮得不多，边缘的颜色还在
+  float cv = clamp(dot(nWm, vWm), 0.0, 1.0);
+  float F = 0.03 + 0.5 * pow(1.0 - cv, 5.0);
+  vec3 refl = dbbStudio(reflect(-vWm, nWm));
+  float g = F * uGlaze;
+  vec3 col = inner * (1.0 - g) + refl * g;
+  // Liquid Glass 的边：朝着主光的那一侧，轮廓上一道极细、清脆的亮线；背光一侧更淡的一道
+  vec3 kd = normalize(vec3(-0.52 + 0.3 * uPointer.x, 0.6 + 0.2 * uPointer.y, 0.6));
+  vec3 ks = normalize(kd - vWm * dot(kd, vWm));
+  vec3 ns = nWm - vWm * dot(nWm, vWm);
+  float side = dot(normalize(ns + 1e-5), ks);
+  float thin = pow(1.0 - cv, 10.0);
+  col += uGlaze * thin * (0.9 * smoothstep(-0.1, 0.9, side) + 0.22 * smoothstep(0.3, 1.0, -side)) * (1.0 - 0.4 * uSpecDark);
   return col;
 }
 `;
@@ -246,8 +351,8 @@ export function createNacre({
     Object.assign(shader.uniforms, shared, own);
     shader.vertexShader = shader.vertexShader
       .replace('#include <morphcolor_vertex>', MORPHCOLOR_FIX)
-      .replace('#include <common>', '#include <common>\nvarying vec3 vDbbLocal;\nvarying vec3 vDbbWorld;')
-      .replace('#include <project_vertex>', '#include <project_vertex>\nvDbbLocal = transformed;\nvDbbWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      .replace('#include <common>', '#include <common>\nvarying vec3 vDbbLocal;\nvarying vec3 vDbbWorld;\nvarying vec3 vDbbViewL;\nvarying vec3 vDbbNormalL;\nvarying vec3 vDbbKeyL;\nuniform vec3 uGlowKey;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvDbbLocal = transformed;\nvDbbWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvDbbViewL = (inverse(modelMatrix) * vec4(cameraPosition, 1.0)).xyz - transformed;\nvDbbNormalL = objectNormal;\nvDbbKeyL = (inverse(modelMatrix) * vec4(uGlowKey, 0.0)).xyz;');
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
@@ -255,6 +360,9 @@ export function createNacre({
 ${defs}
 varying vec3 vDbbLocal;
 varying vec3 vDbbWorld;
+varying vec3 vDbbViewL;
+varying vec3 vDbbNormalL;
+varying vec3 vDbbKeyL;
 uniform float uGlow; uniform vec3 uGlowColor; uniform vec3 uWarmPos; uniform float uWarmAmt;
 uniform float uSweepY; uniform float uSweepAmt; uniform float uBaseGlow; uniform float uSwirlSeed; uniform float uPulse;
 uniform float uDissolve; uniform float uDisR; uniform vec3 uEdgeColor; uniform float uFadeTop; uniform float uFadeBottom; uniform float uAlpha;
@@ -336,7 +444,7 @@ vec3 dbbFx = vec3(0.0);
 outgoingLight = mix(outgoingLight, dbbAurCol * 1.05, dbbAurAmt);
 if (uSpec > 0.001) {
   vec3 nS = normalize(normal);
-  vec3 sc = dbbSpectral(vDbbLocal, nS, normalize(vViewPosition), inverseTransformDirection(nS, viewMatrix));
+  vec3 sc = dbbGlass(vDbbLocal, vDbbViewL, vDbbNormalL, vDbbKeyL, nS, normalize(vViewPosition), inverseTransformDirection(nS, viewMatrix), normalize(cameraPosition - vDbbWorld));
 #ifdef DBB_TINT
   sc = mix(sc, uTint, uTintAmt);
 #endif
@@ -384,6 +492,8 @@ uniform vec3 uBg;
 uniform vec3 uCoreGlow;
 uniform float uTime;
 uniform float uDiffMin;
+uniform float uGlassCap;
+uniform vec2 uPointer;
 varying float vLayer;
 varying float vS;
 varying vec3 vWorldPos;
@@ -425,9 +535,16 @@ void main() {
   vec3 V = normalize(uCamPos - vWorldPos);
   float diff = uDiffMin + (1.0 - uDiffMin) * max(dot(N, uKey), 0.0);
   vec3 R = reflect(-V, N);
-  float spec = pow(max(dot(R, uKey), 0.0), 24.0) * 0.28;
+  float spec = pow(max(dot(R, uKey), 0.0), 24.0) * 0.28 * (1.0 - 0.7 * uGlassCap);
   float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0) * 0.12;
   col = col * diff + vec3(spec + fres);
+  if (uGlassCap > 0.0) {
+    // 像一片抛光的玛瑙：每一圈靠外的边缘更透、更亮（和身体里的年轮壳是同一道光）；
+    // 表面一层柔和的釉光，跟着指针移动
+    if (k > 0) col = mix(col, col + vec3(0.09), smoothstep(0.5, 1.0, vS) * uGlassCap);
+    vec3 kd = normalize(vec3(-0.52 + 0.3 * uPointer.x, 0.6 + 0.2 * uPointer.y, 0.6));
+    col += vec3(pow(max(dot(R, kd), 0.0), 7.0) * 0.2 * uGlassCap);
+  }
   // 层与层之间的细白线
   float fs = fwidth(vS);
   float sep = 1.0 - smoothstep(0.0, fs * 1.8, 1.0 - vS);
@@ -470,6 +587,8 @@ export function createCapMaterial(side = THREE.FrontSide) {
       uCoreGlow: { value: new THREE.Color('#ffffff') },
       uTime: { value: 0 },
       uDiffMin: { value: 0.8 },
+      uGlassCap: { value: 0 },
+      uPointer: { value: new THREE.Vector2() },
     },
     vertexShader: CAP_VS,
     fragmentShader: CAP_FS,

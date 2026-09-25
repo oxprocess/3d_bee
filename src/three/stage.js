@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { RULE } from '../core/growth.js';
 import { hexToRgb, vivid, muted, mixHex, oklabOf } from '../core/color.js';
 import { setTone, tone, layerTone } from '../core/tone.js';
-import { createNacre, nacreShared, createCapMaterial, MAX_LAYERS, MAX_LAMELLAE } from './materials.js';
+import { createNacre, nacreShared, createCapMaterial, MAX_LAYERS, MAX_LAMELLAE, MAX_SHELLS } from './materials.js';
 import { shapeField, surfaceGeometry, capGeometry, outlineGeometry, radiusAt, extents } from './geometry.js';
 import { buildEnvironment } from './env.js';
 import { readPalette, watchTheme, reducedMotion, LOOKS } from './palette.js';
@@ -133,6 +133,23 @@ export class PearlStage extends EventTarget {
     this.restTilt = new THREE.Quaternion();
     this.tiltAmt = 1;
     this.gaze = { x: 0, y: 0, tx: 0, ty: 0 };
+    // 光跟着注意力：指针、按住的手指，或者手机的倾斜，让釉面上的主光轻轻移动
+    this.pointer = { x: 0, y: 0, tx: 0, ty: 0 };
+    this.tilt = { x: 0, y: 0, base: null };
+    this.onTilt = (e) => {
+      if (e.beta == null || e.gamma == null) return;
+      const t = this.tilt;
+      if (!t.base) t.base = { b: e.beta, g: e.gamma };
+      // 基准慢慢跟上当前的握持角度：只对“倾斜的变化”有反应
+      t.base.b += (e.beta - t.base.b) * 0.02;
+      t.base.g += (e.gamma - t.base.g) * 0.02;
+      t.x = clamp((e.gamma - t.base.g) / 25, -1, 1);
+      t.y = clamp(-(e.beta - t.base.b) / 25, -1, 1);
+    };
+    // 不需要授权的设备才听倾斜（iOS 需要弹窗授权，不为一道高光去打扰人）
+    if (!this.reduce && typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission !== 'function') {
+      window.addEventListener('deviceorientation', this.onTilt);
+    }
     this.time = 0;
     this.breathPhase = 0;
     this.doze = 0;
@@ -252,7 +269,36 @@ export class PearlStage extends EventTarget {
         st.wT[i] = w[i];
       });
       st.matureT = clamp((n - 1) / 4, 0, 1);
-      if (snap || this.reduce) { st.w.set(st.wT); st.mature = st.matureT; }
+      // 第一次出现：分量直接到位，浓度从诞生般的淡慢慢亮起来——它醒过来（减少动态效果时直接到位）
+      if (snap || this.reduce) { st.w.set(st.wT); st.mature = this.reduce ? st.matureT : 0; }
+    }
+    this.updateShells();
+  }
+
+  // 年轮壳：身体里每一代的外壳，按它和最外一层的平均半径之比（面积加权），颜色是那一代的颜色（提亮）
+  // 最多取最外面的 MAX_SHELLS 圈；诞生时没有壳
+  updateShells() {
+    const F = this.F, v = this.view;
+    if (!F || !v) return;
+    const N = v.layers.length;
+    const { R, M, nT, nP } = F;
+    const cols = nP + 1, out = (N - 1) * M;
+    const from = Math.max(0, N - 1 - MAX_SHELLS);
+    const rho = [], col = [];
+    for (let k = from; k < N - 1; k++) {
+      let s = 0, ws = 0;
+      for (let i = 0; i <= nT; i++) {
+        const w = Math.sin((Math.PI * i) / nT);
+        for (let j = 0; j < nP; j++) { const o = i * cols + j; s += w * (R[k * M + o] / R[out + o]); ws += w; }
+      }
+      const L = v.layers[k];
+      rho.push(s / ws);
+      col.push(mixHex('#FFFFFF', this.mapColor(L.color, L.core, L), L.core ? 0 : 0.6));
+    }
+    for (const u of [this.shared, this.sShared]) {
+      u.uShellN.value = rho.length;
+      rho.forEach((r, i) => { u.uShellRho.value[i] = r; u.uShellCol.value[i].set(col[i]); });
+      u.uShellAmt.value = this.look.glass?.shells ?? 0;
     }
   }
 
@@ -520,8 +566,11 @@ export class PearlStage extends EventTarget {
   }
 
   hover(p) {
-    if (!p || this.reduce || !this.opts.interactive) { this.gaze.tx = 0; this.gaze.ty = 0; return; }
+    if (!p || !this.opts.interactive) { this.gaze.tx = 0; this.gaze.ty = 0; this.pointer.tx = 0; this.pointer.ty = 0; return; }
     const n = this.ndc(p);
+    this.pointer.tx = clamp(n.x, -1, 1);
+    this.pointer.ty = clamp(n.y, -1, 1);
+    if (this.reduce) return;
     this.gaze.tx = n.x * 0.09;
     this.gaze.ty = -n.y * 0.05;
     this.wake();
@@ -549,6 +598,9 @@ export class PearlStage extends EventTarget {
 
   press(p) {
     this.pressing = true;
+    const n = this.ndc(p);
+    this.pointer.tx = clamp(n.x, -1, 1);
+    this.pointer.ty = clamp(n.y, -1, 1);
     const hit = this.pick(p);
     if (!hit) return;
     if (hit.water) { this.water.touch(hit.point.x, hit.point.z); return; }
@@ -563,6 +615,7 @@ export class PearlStage extends EventTarget {
     this.pressing = false;
     this.warmTarget = 0;
     this.water.release();
+    if (!matchMedia?.('(hover: hover)').matches) { this.pointer.tx = 0; this.pointer.ty = 0; }
   }
 
   beginDrag() {
@@ -948,6 +1001,7 @@ export class PearlStage extends EventTarget {
     mat.sheen = m.sheen;
     mat.sheenColor.set(shadow ? mixHex(m.sheenColor, '#CFF1E6', 0.5) : m.sheenColor);
     mat.envMapIntensity = m.envMapIntensity * (shadow ? 0.82 : 1);
+    mat.clearcoat = m.clearcoat ?? 1;
     // 光谱是算好的颜色，不再经过色调映射：画出来的就是设计的那个颜色
     const tm = !look.spectral;
     if (mat.toneMapped !== tm) { mat.toneMapped = tm; mat.needsUpdate = true; }
@@ -974,6 +1028,9 @@ export class PearlStage extends EventTarget {
     this.applyMaterialLook(this.shadowMat, true);
     this.asm?.layers.forEach((L) => this.applyMaterialLook(L.mat));
     this.capMat.uniforms.uDiffMin.value = this.look.env === 'space' ? 0.52 : 0.8;
+    this.capMat.uniforms.uGlassCap.value = this.look.glass ? 1 : 0;
+    // 光谱方向的颜色是算好的，剖面也不再做色调映射，和身体对得上
+    if (this.capMat.toneMapped !== !this.look.spectral) { this.capMat.toneMapped = !this.look.spectral; this.capMat.needsUpdate = true; }
     this.capMat.uniforms.uKey.value.set(...(this.look.env === 'space' ? [-0.85, 0.42, 0.3] : [-0.45, 0.8, 0.4])).normalize();
     // 光谱：两极的颜色；倒影里的主光也按镜像，倒影才像同一个东西的倒影
     const sp = this.look.spec;
@@ -984,7 +1041,21 @@ export class PearlStage extends EventTarget {
         u.uSpecTop.value.set(...oklabOf(sp.top));
         u.uSpecBottom.value.set(...oklabOf(sp.bottom));
       }
-      u.uSpecKey.value.set(-0.45, mirror ? -0.8 : 0.8, 0.4).normalize();
+      // 倒影在着色器里把世界坐标的 y 翻回来（uMirrorY），主光用同一个方向
+      u.uSpecKey.value.set(-0.45, 0.8, 0.4).normalize();
+      u.uMirrorY.value = mirror ? -1 : 1;
+      const gl = this.look.glass;
+      u.uGlaze.value = gl ? gl.glaze : 0;
+      u.uFrost.value = gl ? gl.frost : 0;
+      u.uInnerDepth.value = gl ? gl.depth : 0;
+      u.uShellAmt.value = gl ? gl.shells : 0;
+      u.uAdular.value = gl ? gl.adular : 0;
+      const studio = gl?.studio?.[pal.dark ? 'dark' : 'light'];
+      if (studio) {
+        u.uStudioSky.value.setRGB(...studio.sky);
+        u.uStudioFloor.value.setRGB(...studio.floor);
+        u.uStudioKey.value.setRGB(...studio.key);
+      }
     }
     this.sun.intensity = this.look.env === 'space' ? 3.4 : 0;
     this.hud.visible = this.look.env === 'space';
@@ -1203,13 +1274,27 @@ export class PearlStage extends EventTarget {
       // 倒影的颜色跟着本体流；被结果搅动以后，按两者判断的一致程度，慢慢回到和本体一样
       S.phase += dt * speed * (1 + S.flow);
       S.phase += (B.phase - S.phase) * (1 - Math.exp(-(0.25 + 1.1 * this.agreement) * dt));
+      // 主光跟着指针（或手指、手机的倾斜）慢慢移过去
+      const P = this.pointer;
+      P.x = damp(P.x, clamp(P.tx + this.tilt.x, -1, 1), 3, dt);
+      P.y = damp(P.y, clamp(P.ty + this.tilt.y, -1, 1), 3, dt);
+      this.shared.uPointer.value.set(P.x, P.y);
+      this.sShared.uPointer.value.set(P.x, P.y);
+      this.capMat.uniforms.uPointer.value.set(P.x, P.y);
+      // 月光石的光与柔光箱同一个方向（倒影里 y 翻过来，在着色器里的局部坐标中自然就对了）
+      this.shared.uGlowKey.value.set(-0.52 + 0.3 * P.x, 0.6 + 0.2 * P.y, 0.6).normalize();
+      this.sShared.uGlowKey.value.set(-0.52 + 0.3 * P.x, -(0.6 + 0.2 * P.y), 0.6).normalize();
       const gB = this.glowBody * 0.45 + this.flash * this.glowTargets.body * 0.5 + this.pulse * 0.6;
       const gS = this.glowShadow * 0.55 + this.flash * this.glowTargets.shadow * 0.6;
+      // 月光石的光也在呼吸（±6%），事情发生时按浓度亮起来；打盹时暗一点
+      const adular = look.glass?.adular ?? 0;
+      const breathe = this.reduce ? 0 : 0.06 * Math.sin(this.breathPhase - 0.4);
       for (const [u, st, g] of [[this.shared, B, gB], [this.sShared, S, gS]]) {
         u.uCatW.value.set(st.w);
         u.uSpecMature.value = st.mature;
         u.uSpecTime.value = st.phase;
         u.uSpecBoost.value = Math.min(1.6, st.boost + g * awake);
+        u.uAdular.value = adular * (1 + breathe + 0.6 * Math.min(1.2, u.uSpecBoost.value)) * awake;
       }
     }
     // 极光：珍珠母方向只在事情发生时出现；Apple 式与 The Expanse 式没有
@@ -1311,6 +1396,7 @@ export class PearlStage extends EventTarget {
 
   dispose() {
     cancelAnimationFrame(this.raf);
+    window.removeEventListener('deviceorientation', this.onTilt);
     this.input.dispose();
     this.ro.disconnect();
     this.io.disconnect();

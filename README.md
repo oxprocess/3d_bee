@@ -13,7 +13,7 @@
 
 完整的规则、公式和接口在 [`docs/spec.md`](docs/spec.md)。
 
-色彩定为 **Apple Intelligence 式**：光谱在它身体里，没有光晕。每一类事的颜色落在它长出来的那一侧，长得越多那一片越宽，代数越多颜色越浓；诞生时只有很淡的一圈。详图 [`docs/color-apple.jpg`](docs/color-apple.jpg)，规则见 spec 第 11 节。另外两个方向（珍珠母、The Expanse 式）留作对比：[`docs/color-directions.jpg`](docs/color-directions.jpg)，在实验台左侧可以切换。
+色彩定为 **Apple Intelligence 式**，质感是**釉面月光石**：光谱在它身体里，隔着一层磨砂玻璃；里面隐约看得见一圈圈年轮，一片柔光浮在表面下，轮廓一道细亮边，主光跟着你的指针；没有光晕。质感的调研与参数见 spec 第 11.6 节、详图 [`docs/material-glass.jpg`](docs/material-glass.jpg)。每一类事的颜色落在它长出来的那一侧，长得越多那一片越宽，代数越多颜色越浓；诞生时只有很淡的一圈。详图 [`docs/color-apple.jpg`](docs/color-apple.jpg)，规则见 spec 第 11 节。另外两个方向（珍珠母、The Expanse 式）留作对比：[`docs/color-directions.jpg`](docs/color-directions.jpg)，在实验台左侧可以切换。
 
 ## 结构
 

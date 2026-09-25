@@ -85,7 +85,7 @@
 | 声音（建议，未实现） | 默认静音；只有两种：落水一声轻响（意外越大音越低）、继承一声玻璃音 | — |
 | 减少动态效果 | 关闭呼吸、注视、惯性；动画时长 × 0.25；涟漪减弱 | `prefers-reduced-motion` |
 
-高级感的原则：颜色全部来自同一套光谱色调，每一种都有来处，没有光晕、没有高光，品牌渐变只用在一个标题上；惯性、涟漪按真实物理做，只是更慢更轻；**动作的分量跟事情的分量一致**：呼吸和颜色的流动一直在、颜色浓一阵偶尔出现、涟漪一件事一次、光柱一代一次。
+高级感的原则：颜色全部来自同一套光谱色调，每一种都有来处，没有光晕，表面只有磨砂的柔光和一道细亮边（11.6），品牌渐变只用在一个标题上；惯性、涟漪按真实物理做，只是更慢更轻；**动作的分量跟事情的分量一致**：呼吸和颜色的流动一直在、颜色浓一阵偶尔出现、涟漪一件事一次、光柱一代一次。
 
 ## 7. 生长规则（公式）
 
@@ -141,6 +141,7 @@
 | 倒影清晰度 | 水下模糊程度 | `0.18 + 0.82 · 进度^0.65 · clamp((胜率 − 0.3)/0.4)` | 每次结果 |
 | 倒影跟随 | 慢半拍 | 最近 8 次 `|p本体 − p影子|` | 每次结果 |
 | 水滴 | 悬着 = 已封存；越低越接近期限 | `predictions[sealed].deadline` 与 `now` | 封存 / 时间 |
+| 年轮壳 | 身体里隐约的一圈圈，一圈是一代 | `generations.length` · 每一代的平均半径之比 | 继承 |
 | 颜色 | 每类事的颜色在它长出来的一侧；长得越多那一片越宽；代数越多越浓 | `categories[].azimuth` · 各代 `t × lobes[].w` 按类别求和 · `generations.length` | 继承 |
 | 浓淡 | 封存时本体与倒影的颜色各浓一下 | `pBody`、`pShadow` | 封存 |
 | 涟漪 | 振幅 = `0.55 + 1.7 · |结果 − p影子|`；颜色 = 类别 | `resolve` | 结果到来 |
@@ -215,7 +216,7 @@
 - 每类权重 `k_c = [exp(−Δφ² / width²) · (0.45 + 0.85·s_c) · (1 − 0.6·y²)]²`；两极 `k = [1.05 · smoothstep(0.15, 0.95, ±y)]²`。平方再归一：每一片中间较纯，交界柔和。
 - 在 **OKLab** 里混：亮度与彩度按权重平均；色相相近（单位色相向量的一致度 > 0.6）按色相平均，相差大的直接平均 a、b，得到参考图那样的橄榄、灰紫过渡。亮度均匀，不会出现一道比两边都亮的黄。
 - 深度：`f = n·v`。中心亮度 `+0.025·f²`、彩度 `−25%·f²`；边缘 `e = (1 − f)^1.6`，彩度 `+38%·e`、亮度 `−0.02·e`；彩度软上限 `0.16 · tanh(C / 0.16)`。
-- 光：左上柔光 × `(0.92 + 0.11·K)`；一道极细亮边 `(1 − f)^6`；不走 PBR 高光、不反射环境、不做色调映射（`toneMapped = false`），画出来的就是设计的颜色。倒影的主光按镜像取。
+- 光：左上柔光 × `(0.92 + 0.11·K)`；表面、细亮边、身体里的光见 11.6；不走 PBR、不做色调映射（`toneMapped = false`），画出来的就是设计的颜色。倒影在着色器里按镜像取光。
 - 每类事的颜色先落进同一套色调（`core/color.js · appleTone`：按色相插值饱和度与亮度，从参考图取样校准），同类事每多练一代加深 0.07，照旧。卡片、时间轴、缩略图都经过 `core/tone.js`，和珍珠对得上。
 
 ### 11.3 事件：流动与浓淡，不发光
@@ -242,9 +243,55 @@
 - **珍珠母 `lit`**（上一版推荐）：平时是安静的珍珠母，极光只在事情发生时沿轮廓出现。极光强度：封存 0.7 × p本体 / 0.8 × p影子，待揭晓 0.12–0.14，结果 0.5 + 0.9 × 意外，继承 1.1，每秒衰减约 0.9。
 - **The Expanse 式 `expanse`**：一束硬光、陶瓷与金属、琥珀与青色的仪表光。仪表语言（细线、刻度、读数）适合剖面、细纹读数和接口透视，不适合球的皮肤。
 
+### 11.6 质感：釉面月光石
+
+上一版的光谱涂在表面上：颜色对了，但像一块上了色的陶土，没有深度，也不知道你在看它。这一版先看了现在最好的 C 端设计怎么处理“里面有光的东西”，结论有五条：
+
+1. **光在里面**，玻璃只在边缘和高光处露面，颜色在一层柔的材质下面（HomePod 的扩散罩、月光石、Bocci 28）。
+2. **深度来自视差**：里面的东西和表面的反光以不同的速度移动。
+3. **光跟着注意力**：高光跟着指针、手指、手机的倾斜（Liquid Glass 的高光随设备运动；visionOS 看向哪里，哪里亮起）。
+4. **显现靠光**：出现时不是淡入，是颜色慢慢亮起来（Liquid Glass 靠光的弯折“显现”）。
+5. **光不出轮廓**：没有光晕。
+
+由里到外五层，全部在一个着色器里（`materials.js · dbbGlass`），不需要额外的渲染通道：
+
+| 层 | 做法 | 参数（`LOOKS.apple.glass`） |
+|---|---|---|
+| 颜色场 | 视线在局部坐标里折射进身体（折射率 1.45），在表面下 `depth × r` 处取色；转动时里面的颜色和表面错开 | `depth 0.36` |
+| 年轮壳 | 第 k 代的外壳近似为外表面按平均半径之比 `ρ_k` 缩小；视线（折射后）离中心最近的距离 `p` 接近 `ρ_k` 时亮一圈：`exp(−((ρ_k − p)/0.02)²) · exp(−2.2·√(1 − ρ_k²))`，颜色是那一代的颜色提亮；最多取最外面 12 圈 | `shells 0.12` |
+| 月光石的光 | 取身体里 0.5r 处的点，按内部球面把折射后的视线再反射一次，和主光方向越近越亮：`pow(max(r·k, 0), 5)`；内部弯得更厉害，所以比表面的高光走得慢 | `adular 0.22`；呼吸 ±6%；× (1 + 0.6 × 浓度) |
+| 磨砂的表面 | 反射摄影棚：上亮下暗，左上方一块大而柔的圆角柔光箱（跟着指针）；`F = 0.03 + 0.5·(1 − cosθ)^5`，掠射处稍稍变亮，边缘的颜色还在 | `glaze 1`；摄影棚浅色 / 深色两套 |
+| Liquid Glass 的边 | 轮廓上一道极细的亮线：`(1 − cosθ)^10`，朝主光一侧 0.9、背光一侧 0.22 | 同上 |
+
+- 倒影：世界坐标的 y 在着色器里翻回来（`uMirrorY = −1`），主光方向在局部坐标里自然镜像，倒影就是同一个东西在水里的样子。
+- 剖面：切面像一片抛光的玛瑙，每一圈靠外的边缘更亮更透（和年轮壳是同一道光），表面一层柔和的釉光，同样跟着指针；不做色调映射，和身体对得上。
+- 醒过来：第一次出现时，浓度从 0（诞生般的淡）以每秒 1.1 的速度升到它该有的值。
+- 光跟着注意力：鼠标悬停、按住的手指、手机倾斜（只在不需要授权的设备上监听 `deviceorientation`，基准慢慢跟上握持角度，只对“变化”有反应）。
+- 减少动态效果：流动、呼吸、倾斜关闭；浓度直接到位。
+- 物理材质只留最基本的一层（不算虹彩、清漆、绒光），省下手机上的算力。
+- 磨砂颗粒（`frost`）默认关：在这个观看距离上看不出来，只剩噪点。
+
+参考：
+[Meet Liquid Glass（WWDC25）](https://developer.apple.com/videos/play/wwdc2025/219/) ·
+[Liquid Glass](https://en.wikipedia.org/wiki/Liquid_Glass) ·
+[iOS 27 的 Siri 设计](https://9to5mac.com/2026/05/26/ios-27s-new-siri-design-will-look-like-this-per-report/) ·
+[visionOS 悬停交互（WWDC25）](https://developer.apple.com/videos/play/wwdc2025/303/) ·
+[Gemini AI Visual Design](https://design.google/library/gemini-ai-visual-design) ·
+[ElevenLabs UI Orb](https://ui.elevenlabs.io/docs/components/orb) ·
+[Mico](https://windowsforum.com/news/mico-microsofts-animated-copilot-avatar-brings-personality-to-ai.386382/) ·
+[HomePod 的状态灯](https://www.idownloadblog.com/2018/02/23/homepod-status-lights/) ·
+[Friend（Bould Design）](https://www.bould.com/work/friend) ·
+[Bocci 28](https://bocci.com/shop/28-series/) ·
+[Olafur Eliasson, Compassion sphere](https://olafureliasson.net/artwork/compassion-sphere-2011/) ·
+[Adularescence](https://en.wikipedia.org/wiki/Adularescence) ·
+[How do agates form](https://www.geologyin.com/2016/02/how-do-agates-form.html) ·
+[Igloo Inc 案例](https://www.awwwards.com/igloo-inc-case-study.html) ·
+[Refik Anadol](https://www.artsy.net/article/artsy-editorial-refik-anadols-mesmerizing-data-paintings-captivating-audiences-worldwide) ·
+[MeshTransmissionMaterial](https://drei.docs.pmnd.rs/shaders/mesh-transmission-material)
+
 ## 12. 已知限制
 
-- 需要 WebGL2。低端手机上帧率会下降；像素比已限制在 1.75–2，倒影渲染在半分辨率。
+- 需要 WebGL2（顶点着色器里用 `inverse()` 把镜头换到局部坐标）。低端手机上帧率会下降；像素比已限制在 1.75–2，倒影渲染在半分辨率。
 - 声音只写了建议，没有实现；触觉只在支持 `navigator.vibrate` 的设备上有效（iOS Safari 不支持）。
 - three r186 的 `morphcolor_vertex` 有一个类型错误，`materials.js` 里替换成了修正版（`MORPHCOLOR_FIX`）；升级 three 后可以去掉。
 - 演示数据的细纹由固定种子生成；真实数据需要账本里的 `lamellae`。

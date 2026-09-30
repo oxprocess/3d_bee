@@ -1079,16 +1079,11 @@ export class PearlStage extends EventTarget {
       const gl = this.look.glass;
       const mode = pal.dark ? 'dark' : 'light';
       u.uGlaze.value = gl ? gl.glaze : 0;
-      u.uIor.value = gl?.ior ?? 1.5;
       u.uShellAmt.value = gl ? gl.shells : 0;
       if (gl?.facet) u.uFacetK.value.set(...gl.facet);
-      if (gl?.core) u.uCore.value.set(...gl.core);
-      if (gl?.clear) {
-        u.uClear.value.set(gl.clear[mode].tint, gl.clear[mode].shift);
-        u.uGlassTint.value.set(gl.clear[mode].glass);
-      }
-      // 清玻璃透出来的就是身后的底色（线性）
-      u.uBgLin.value.set(pal.bg);
+      u.uLit.value = gl?.lit ?? 0;
+      u.uIri.value = gl?.iri ?? 0;
+      u.uGloss.value = gl?.gloss ?? 0;
       if (gl?.lines) u.uLines.value.set(...gl.lines[mode]);
       if (gl?.edge) u.uEdgeCol.value.set(gl.edge[mode]);
       u.uBand.value = gl?.band ?? 0;
@@ -1329,6 +1324,9 @@ export class PearlStage extends EventTarget {
       this.shared.uPointer.value.set(P.x, P.y);
       this.sShared.uPointer.value.set(P.x, P.y);
       this.capMat.uniforms.uPointer.value.set(P.x, P.y);
+      // 主光（世界坐标）跟着指针；倒影里 y 翻过来，在着色器的局部坐标里自然就对了
+      this.shared.uGlowKey.value.set(-0.52 + 0.3 * P.x, 0.6 + 0.2 * P.y, 0.6).normalize();
+      this.sShared.uGlowKey.value.set(-0.52 + 0.3 * P.x, -(0.6 + 0.2 * P.y), 0.6).normalize();
       const gB = this.glowBody * 0.45 + this.flash * this.glowTargets.body * 0.5 + this.pulse * 0.6;
       const gS = this.glowShadow * 0.55 + this.flash * this.glowTargets.shadow * 0.6;
       // 晶体也在呼吸（亮度 ±4%），事情发生时按浓度亮一点；打盹时暗一点

@@ -105,23 +105,22 @@ export function nacreShared() {
     uSpecTop: { value: new THREE.Vector3(0.84, -0.06, 0.01) }, // 两极的颜色（OKLab）
     uSpecBottom: { value: new THREE.Vector3(0.7, 0.07, -0.05) },
     uSpecDark: { value: 0 },
-    // 晶体：折射率（隔着外壳看心）；表面反射的强度；摄影棚
-    uIor: { value: 1.33 },
+    // 晶体：表面反射的强度；摄影棚
     uGlaze: { value: 1 },
     uMirrorY: { value: 1 },
     uPointer: { value: new THREE.Vector2() },
     uStudioSky: { value: new THREE.Color(0.92, 0.92, 0.95) },
     uStudioFloor: { value: new THREE.Color(0.72, 0.72, 0.77) },
     uStudioKey: { value: new THREE.Color(2.4, 2.4, 2.45) },
-    // 心的每个面的明暗（基础、增益）；心；外面的清玻璃；全息光带；外壳的棱
+    // 刻面的明暗（基础、增益）；朝光的面提亮；全息；光泽；全息光带；棱
     uFacetK: { value: new THREE.Vector2(0.82, 0.3) },
-    uCore: { value: new THREE.Vector2(0.62, 0.45) }, // 心：赤道上的角收进多少、心的棱多亮
-    uClear: { value: new THREE.Vector2(0.1, 0.5) }, // 外面的清玻璃：带多少银、色相随角度偏多少
-    uBgLin: { value: new THREE.Color(0.9, 0.9, 0.93) }, // 身后的底色（线性）：清玻璃透出来的就是它
-    uGlassTint: { value: new THREE.Color(0.8, 0.84, 0.92) }, // 清玻璃本身一点冷调的银
+    uLit: { value: 0 }, // 朝光的面提亮多少（像光透过来）
+    uIri: { value: 0 }, // 色相随角度偏多少（弧度）：全息
+    uGloss: { value: 0 }, // 光泽：对上主光的面上一块柔亮
+    uGlowKey: { value: new THREE.Vector3(-0.52, 0.6, 0.6).normalize() }, // 主光（世界坐标，跟着指针）
     uBand: { value: 0 }, // 全息光带的亮度
     uEdgeCol: { value: new THREE.Color(1, 1, 1) }, // 棱的颜色
-    uLines: { value: new THREE.Vector3(0.7, 0.12, 0.5) }, // 外壳的棱：亮线、棱边的彩虹、轮廓
+    uLines: { value: new THREE.Vector3(0.7, 0.12, 0.5) }, // 棱：亮线、棱边的彩虹、轮廓
     // 晶体：每一代外壳的刻面（局部坐标的平面，一行一代），上下两个尖的倍数，里面的幻影（颜色、强度）
     uPlanes: { value: planesTexture() },
     uFaces: { value: 0 },
@@ -141,12 +140,11 @@ export function nacreShared() {
 // 两个尖各有一种颜色（上尖清亮的薄荷、下尖兰紫）。
 // 混色在 OKLab（感知均匀的颜色空间）里做：亮度过渡均匀，不会有一道比两边都亮的黄，也不会突然跳色。
 //
-// 材质是“极光水晶”：清玻璃里一颗发光的心
-//   心         一颗更瘦的晶体，和外壳共用上下两个尖；隔着外壳折射进去才看见它，转动时有一点视差
-//   极光       心的每个面是一段完整、平滑的渐变，面与面按朝向分出明暗；一道全息光带横过，面转过来时跟着滑动
-//   清玻璃     外壳透出身后的底色，带一点冷调的银；心的光在里面淡淡散开
-//   棱         外壳一道细亮线，棱边上一道极细的彩虹（棱镜的色散）；心的棱隔着玻璃，更淡；轮廓一道
-//   光泽       表面反射摄影棚，掠射处按菲涅耳变亮
+// 材质是“极光水晶”：只有一层，五彩极光就在表面上
+//   极光       每个面是一段完整、平滑的渐变；色相随角度轻轻偏一点（全息），一道光带横过，面转过来时跟着滑动
+//   刻面       朝向主光和头顶的面亮而透，背光的面颜色深；主光在整颗晶体上投下一片连续的光
+//   高光       柔光箱映在抛光的面上，是边缘利落的一块，转动时从一个面滑到下一个面；掠射处按菲涅耳反射摄影棚
+//   棱         一道细亮线，对着灯的那一小段闪一下；棱边上一道极细的彩虹（棱镜的色散）；轮廓一道
 //   没有光晕   所有的光都在轮廓以内
 export const SPECTRAL_GLSL = /* glsl */ `
 #define DBB_MAXC 8
@@ -154,9 +152,9 @@ export const SPECTRAL_GLSL = /* glsl */ `
 uniform float uSpec; uniform float uSpecN; uniform float uCatAz[DBB_MAXC]; uniform vec3 uCatLab[DBB_MAXC]; uniform float uCatW[DBB_MAXC];
 uniform float uSpecMature; uniform float uSpecTime; uniform float uSpecBoost;
 uniform vec3 uSpecTop; uniform vec3 uSpecBottom; uniform float uSpecDark;
-uniform float uIor; uniform float uGlaze; uniform float uMirrorY; uniform vec2 uPointer;
+uniform float uGlaze; uniform float uMirrorY; uniform vec2 uPointer;
 uniform vec3 uStudioSky; uniform vec3 uStudioFloor; uniform vec3 uStudioKey;
-uniform vec2 uFacetK; uniform vec2 uCore; uniform vec2 uClear; uniform vec3 uBgLin; uniform vec3 uGlassTint; uniform float uBand; uniform vec3 uEdgeCol; uniform vec3 uLines;
+uniform vec2 uFacetK; uniform float uLit; uniform float uIri; uniform float uGloss; uniform float uBand; uniform vec3 uEdgeCol; uniform vec3 uLines;
 uniform float uShellN; uniform vec3 uShellCol[DBB_MAXS]; uniform float uShellAmt;
 uniform sampler2D uPlanes; uniform float uFaces; uniform float uOuterRow; uniform float uTopR; uniform float uBotR;
 uniform float uChromaGain; uniform float uChromaCap; uniform float uDeep;
@@ -304,57 +302,18 @@ vec3 dbbVivid(float L, vec2 ab) {
   if (hi > 1.0) gt = min(gt, (1.0 - gy) / max(hi - gy, 1e-5));
   return clamp(vec3(gy) + (c - vec3(gy)) * gt, 0.0, 1.0);
 }
-// 心：一颗更瘦的晶体，和外壳共用上下两个尖，赤道上的角收进 s 倍（外壳的平面按水平方向缩放：n' ∝ (n.x/s, n.y, n.z/s)）。
-// 视线（从 O 出发、方向 D）进入心的距离与离开的距离；nIn 是进入的那个面的法线
-vec2 dbbCore(vec3 O, vec3 D, int row, float s, out vec3 nIn) {
-  float in1 = -1e5, out1 = 1e5;
-  nIn = vec3(0.0, 1.0, 0.0);
-  int nf = int(uFaces + 0.5);
-  for (int j = 0; j < 16; j++) {
-    if (j >= nf) break;
-    vec4 P = texelFetch(uPlanes, ivec2(j, row), 0);
-    vec3 n = vec3(P.x / s, P.y, P.z / s);
-    float l = length(n);
-    n /= l;
-    float nd = dot(n, D);
-    if (abs(nd) < 1e-5) continue;
-    float t = (P.w / l - dot(n, O)) / nd;
-    if (nd < 0.0) { if (t > in1) { in1 = t; nIn = n; } }
-    else out1 = min(out1, t);
-  }
-  return vec2(in1, out1);
-}
-// 心的表面上的点离它最近的一条棱多远（到心的其他面的有符号距离，越过棱是负的，线是连续的）
-float dbbCoreEdge(vec3 p, vec3 nSelf, int row, float s) {
-  float e = 1e5;
-  int nf = int(uFaces + 0.5);
-  for (int j = 0; j < 16; j++) {
-    if (j >= nf) break;
-    vec4 P = texelFetch(uPlanes, ivec2(j, row), 0);
-    vec3 n = vec3(P.x / s, P.y, P.z / s);
-    float l = length(n);
-    n /= l;
-    if (dot(n, nSelf) > 0.999) continue;
-    e = min(e, P.w / l - dot(n, p));
-  }
-  return e;
-}
 // local：表面点（晶体自己的坐标）；viewL / normL：同一坐标里朝向镜头的方向与法线；nW / vW：世界坐标里的法线与视线
-vec3 dbbGlass(vec3 local, vec3 viewL, vec3 normL, vec3 nW, vec3 vW) {
+vec3 dbbGlass(vec3 local, vec3 viewL, vec3 normL, vec3 keyL, vec3 nW, vec3 vW) {
   vec3 V = normalize(viewL);
   vec3 N = normalize(normL);
   if (dot(N, V) < 0.0) N = -N;
   float r = max(length(local), 1e-4);
   int row = int((uRow >= 0.0 ? uRow : uOuterRow) + 0.5);
-  vec3 Tr = refract(-V, N, 1.0 / uIor);
-  if (dot(Tr, Tr) < 1e-6) Tr = -N;
-  // ① 心：隔着外面的清玻璃，折射进去看见的那颗更瘦的晶体。它是鲜亮的极光
-  vec3 nC;
-  vec2 ch = dbbCore(local, Tr, row, uCore.x, nC);
-  float thickC = ch.y - ch.x;
-  float coreMask = smoothstep(0.0, 1.4 * max(fwidth(thickC), 1e-6), thickC) * step(0.0, ch.y);
-  vec3 Pc = local + Tr * max(ch.x, 0.0);
-  vec3 lab = dbbField(normalize(dbbShapeDir(Pc) + 0.16 * nC));
+  float f = clamp(dot(N, V), 0.0, 1.0); // 这个面正对你的程度
+  // 这个面上的高度：0 在赤道那条棱，1 在尖上（尖在轴上，所以尖的高度 = 平面到中心的距离 / 法线的 y）
+  float t = clamp(local.y * N.y / max(dot(N, local), 1e-4), 0.0, 1.0);
+  // ① 极光就在表面上：每个面是一段完整、平滑的渐变，按这个面的朝向偏一点，面与面分得开
+  vec3 lab = dbbField(normalize(dbbShapeDir(local) + 0.16 * N));
   float L = lab.x;
   float C = length(lab.yz);
   vec2 h = C > 1e-5 ? lab.yz / C : vec2(1.0, 0.0);
@@ -364,35 +323,50 @@ vec3 dbbGlass(vec3 local, vec3 viewL, vec3 normL, vec3 nW, vec3 vW) {
   // 诞生时很淡：颜色都在，都很浅；经历让颜色变浓
   C *= mix(0.4, 1.0, uSpecMature);
   L = mix(0.93, L, mix(0.45, 1.0, uSpecMature));
-  // 心的每个面明暗分得开：朝上的亮一点，正对你的亮一点
-  float shade = uFacetK.x + uFacetK.y * (0.55 * nC.y + 0.45 * max(dot(nC, -Tr), 0.0));
-  vec3 core = dbbVivid(L, h * C) * shade;
-  // 全息的光带：横过心的每个面，面转过来时跟着滑动
-  float tc = clamp(Pc.y * nC.y / max(dot(nC, Pc), 1e-4), 0.0, 1.0);
-  float bc = mix(0.8, 0.3, smoothstep(0.4, 1.0, max(dot(nC, -Tr), 0.0)));
-  float band = exp(-pow((tc - bc) / 0.12, 2.0));
-  vec2 hb = vec2(h.x * cos(0.55) - h.y * sin(0.55), h.x * sin(0.55) + h.y * cos(0.55));
-  core = mix(core, dbbVivid(min(L + 0.1, 0.94), hb * C), clamp(band * uBand, 0.0, 1.0));
-  // 心的棱：隔着玻璃看，一道细亮线
-  float ec = dbbCoreEdge(Pc, nC, row, uCore.x);
-  float eCore = 1.0 - smoothstep(0.0, 1.2 * max(fwidth(ec), 1e-6), abs(ec));
-  core = mix(core, mix(core, vec3(1.0), 0.8), eCore * uCore.y);
-  // ② 外面一层清透的玻璃：透出身后的底色，只带一点淡淡的颜色；色相随角度偏一点（像全息片）
-  float f = clamp(dot(N, V), 0.0, 1.0);
-  float ang = (1.0 - f) * uClear.y;
-  vec2 hs = vec2(h.x * cos(ang) - h.y * sin(ang), h.x * sin(ang) + h.y * cos(ang));
-  vec3 clear = mix(mix(uBgLin, uGlassTint, uClear.x), dbbVivid(0.9, hs * C * 0.5), uClear.x * 0.5);
-  // 心的光在玻璃里散开：靠近心的地方带着它淡淡的颜色，往外渐渐清透
-  float glow = exp(min(thickC, 0.0) / (0.22 * r)) * (1.0 - coreMask);
-  clear = mix(clear, dbbVivid(mix(L, 0.92, 0.45), h * C * 0.7), glow * uBand * 0.9);
-  vec3 inner = mix(clear, core, coreMask);
-  // ③ 抛光：反射摄影棚（左上柔光箱跟着指针、右侧灯带、头顶一盏）；菲涅耳：正对时很淡，侧过去像镜子
+  // 全息：色相随角度轻轻偏一点，转动时颜色在面上流过
+  float ang = (1.0 - f) * uIri;
+  h = vec2(h.x * cos(ang) - h.y * sin(ang), h.x * sin(ang) + h.y * cos(ang));
+  vec3 base = dbbVivid(L, h * C);
+  // ② 刻面：朝向主光（左上方，跟着指针）和头顶的面亮、透，背光的面颜色深——明暗分得开，才是晶体
   vec3 nWm = normalize(vec3(nW.x, nW.y * uMirrorY, nW.z));
   vec3 vWm = normalize(vec3(vW.x, vW.y * uMirrorY, vW.z));
+  vec3 kd = normalize(vec3(-0.52 + 0.3 * uPointer.x, 0.6 + 0.2 * uPointer.y, 0.6));
+  float Kk = dot(nWm, kd) * 0.5 + 0.5;
+  float Kt = nWm.y * 0.5 + 0.5;
+  vec3 col = base * (uFacetK.x + uFacetK.y * (0.7 * Kk + 0.3 * Kt));
+  // 亮的面像光透过来：朝同一个色相提亮，不是发灰
+  col = mix(col, dbbVivid(min(L + 0.12, 0.95), h * C * 0.8), smoothstep(0.6, 1.0, Kk) * uLit);
+  // 面里也有光：靠近赤道那条棱的地方稍亮，往尖上稍深
+  col *= 1.06 - 0.14 * t;
+  // 主光在整颗晶体上的一片光：朝光的一侧亮，背光的一侧深；跨过棱是连续的，不会有折痕
+  float sweep = smoothstep(-0.45, 0.95, dot(local / r, normalize(keyL)));
+  col *= 0.86 + 0.26 * sweep;
+  // 光透进来：视线越接近穿过中心，越朝同一个色相提亮（不发白、不发灰）
+  float bb = dot(-V, local / r);
+  col = mix(col, dbbVivid(min(L + 0.1, 0.94), h * C * 0.9), exp(-(1.0 - bb * bb) / 0.3) * uLit * 0.8);
+  // 全息的光带：一道横过这个面，面转过来时跟着滑动
+  float bc = mix(0.8, 0.3, smoothstep(0.4, 1.0, f));
+  float band = exp(-pow((t - bc) / 0.12, 2.0));
+  vec2 hb = vec2(h.x * cos(0.55) - h.y * sin(0.55), h.x * sin(0.55) + h.y * cos(0.55));
+  col = mix(col, dbbVivid(min(L + 0.1, 0.94), hb * C), clamp(band * uBand, 0.0, 1.0));
+  // ③ 抛光：反射摄影棚（柔光箱、灯带、顶灯），菲涅耳；再加一层光泽——对上主光的面上一块柔亮，正对时一闪
+  vec3 R = reflect(-vWm, nWm);
   float cv = clamp(dot(nWm, vWm), 0.0, 1.0);
   float F = (0.04 + 0.96 * pow(1.0 - cv, 5.0)) * uGlaze;
-  vec3 col = inner * (1.0 - F) + dbbStudioSharp(reflect(-vWm, nWm)) * F;
-  // ④ 外壳的棱：一道清楚的亮线，里侧一点柔光；棱边上一道极细的彩虹（棱镜的色散）；轮廓一道
+  col = col * (1.0 - F) + dbbStudioSharp(R) * F;
+  // 高光：柔光箱映在抛光的面上，是边缘利落的一块（圆角矩形，里面上亮下暗），不是一团柔光（那是塑料）。
+  // 算反光时给每个面一点看不见的弧度（面还是平的），反光就落在面上的某一处，转动时从一个面滑到下一个面
+  vec3 tang = local / r - N * dot(local / r, N);
+  vec3 Rp = reflect(-V, normalize(N + 0.3 * tang));
+  vec3 kL = normalize(keyL);
+  vec3 ku = normalize(cross(vec3(0.0, 1.0, 0.0), kL));
+  vec3 kv = cross(kL, ku);
+  float dk = dot(Rp, kL);
+  vec2 q = vec2(dot(Rp, ku), dot(Rp, kv)) / max(dk, 0.2);
+  float sd = length(max(abs(q) - vec2(0.3, 0.18), 0.0)) - 0.06;
+  float box = (1.0 - smoothstep(-0.004, 0.008, sd)) * step(0.0, dk);
+  col = mix(col, mix(base, vec3(1.0), 0.85), box * (0.34 + 0.22 * smoothstep(0.2, -0.2, q.y)) * uGloss);
+  // ④ 棱：一道清楚的亮线；棱的倒角正好把主光反射进眼睛的那一小段闪一下，转动时闪光沿着棱走；棱边一道极细的彩虹
   vec3 nO, nDummy;
   float ed = dbbEdgeDist(local, N, row, nO);
   float efw = max(fwidth(ed), 1e-6);
@@ -402,9 +376,13 @@ vec3 dbbGlass(vec3 local, vec3 viewL, vec3 normL, vec3 nW, vec3 vW) {
     col = mix(col, mix(col, prism, 0.5), (1.0 - fr) * smoothstep(0.1, 0.35, fr) * uLines.y * 2.5);
   }
   float eLine = 1.0 - smoothstep(0.0, 1.2 * efw, abs(ed));
+  vec3 Rb = reflect(-vWm, normalize(nWm + normalize(vec3(nO.x, nO.y * uMirrorY, nO.z))));
+  float glint = pow(max(dot(Rb, kd), 0.0), 160.0) * 2.5;
   vec4 hv = dbbHull(local, -V, row, nDummy);
   float eSil = dbbLine(max(hv.z, 0.0), 1.5);
-  return mix(col, uEdgeCol, clamp(uLines.x * eLine + uLines.z * eSil, 0.0, 1.0));
+  col = mix(col, uEdgeCol, clamp(uLines.x * eLine + uLines.z * eSil, 0.0, 1.0));
+  col += vec3(1.0) * min(glint, 1.5) * (1.0 - smoothstep(0.0, 2.5 * efw, abs(ed)));
+  return col;
 }
 `;
 
@@ -472,8 +450,8 @@ export function createNacre({
     Object.assign(shader.uniforms, shared, own);
     shader.vertexShader = shader.vertexShader
       .replace('#include <morphcolor_vertex>', MORPHCOLOR_FIX)
-      .replace('#include <common>', '#include <common>\nvarying vec3 vDbbLocal;\nvarying vec3 vDbbWorld;\nvarying vec3 vDbbViewL;\nvarying vec3 vDbbNormalL;')
-      .replace('#include <project_vertex>', '#include <project_vertex>\nvDbbLocal = transformed;\nvDbbWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nmat4 dbbInv = inverse(modelMatrix);\nvDbbViewL = (dbbInv * vec4(cameraPosition, 1.0)).xyz - transformed;\nvDbbNormalL = objectNormal;');
+      .replace('#include <common>', '#include <common>\nvarying vec3 vDbbLocal;\nvarying vec3 vDbbWorld;\nvarying vec3 vDbbViewL;\nvarying vec3 vDbbNormalL;\nvarying vec3 vDbbKeyL;\nuniform vec3 uGlowKey;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvDbbLocal = transformed;\nvDbbWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nmat4 dbbInv = inverse(modelMatrix);\nvDbbViewL = (dbbInv * vec4(cameraPosition, 1.0)).xyz - transformed;\nvDbbNormalL = objectNormal;\nvDbbKeyL = (dbbInv * vec4(uGlowKey, 0.0)).xyz;');
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
@@ -483,6 +461,7 @@ varying vec3 vDbbLocal;
 varying vec3 vDbbWorld;
 varying vec3 vDbbViewL;
 varying vec3 vDbbNormalL;
+varying vec3 vDbbKeyL;
 uniform float uGlow; uniform vec3 uGlowColor; uniform vec3 uWarmPos; uniform float uWarmAmt;
 uniform float uSweepY; uniform float uSweepAmt; uniform float uBaseGlow; uniform float uSwirlSeed; uniform float uPulse;
 uniform float uDissolve; uniform float uDisR; uniform vec3 uEdgeColor; uniform float uFadeTop; uniform float uFadeBottom; uniform float uAlpha;
@@ -564,7 +543,7 @@ vec3 dbbFx = vec3(0.0);
 outgoingLight = mix(outgoingLight, dbbAurCol * 1.05, dbbAurAmt);
 if (uSpec > 0.001) {
   vec3 nS = normalize(normal);
-  vec3 sc = dbbGlass(vDbbLocal, vDbbViewL, vDbbNormalL, inverseTransformDirection(nS, viewMatrix), normalize(cameraPosition - vDbbWorld));
+  vec3 sc = dbbGlass(vDbbLocal, vDbbViewL, vDbbNormalL, vDbbKeyL, inverseTransformDirection(nS, viewMatrix), normalize(cameraPosition - vDbbWorld));
 #ifdef DBB_TINT
   sc = mix(sc, uTint, uTintAmt);
 #endif

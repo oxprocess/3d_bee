@@ -1,5 +1,5 @@
 // 时间轴：每个点是一次长成新层的时刻，颜色是那一层的颜色；最右一段虚线是“现在”——倒影还在练的部分。
-// 点一个点，珍珠就剥回那一代的样子（深度和时间是同一根轴）。
+// 点一个点，晶体就剥回那一代的样子（深度和时间是同一根轴）。
 import { DbbElement, esc, define } from './base.js';
 import { layerTone } from '../core/tone.js';
 import { fmtMonth } from '../core/time.js';

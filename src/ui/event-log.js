@@ -17,7 +17,7 @@ function summary(e) {
     case 'seal': return `${esc(e.prediction.question)} · 本体 ${pct(e.prediction.pBody)} / 影子 ${pct(e.prediction.pShadow)}`;
     case 'prepare': return `准备好 ${e.items.length} 件事：${esc(e.items.slice(0, 3).join('、'))}${e.items.length > 3 ? '…' : ''}`;
     case 'resolve': return `${e.outcome ? '发生了' : '没发生'}${e.note ? `：${esc(e.note)}` : ''} → 影子更新（形态：涟漪、倒影变一点）`;
-    case 'iterate': return e.result === 'inherit' ? '影子经得起检验 → 继承为新的一层（形态：光柱、珍珠多一层）' : '还不够 → 继续练（形态：珍珠不变）';
+    case 'iterate': return e.result === 'inherit' ? '影子经得起检验 → 继承为新的一层（形态：光柱、晶体多一层）' : '还不够 → 继续练（形态：晶体不变）';
     case 'practice': return `影子开始练：${esc(e.source ?? '')}`;
     default: return '';
   }

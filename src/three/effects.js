@@ -1,7 +1,7 @@
 // 水滴与光柱。
-//   水滴：一次封存的预判，悬在珍珠和水面之间，还没落下。离期限越近，它离水面越近。
+//   水滴：一次封存的预判，悬在晶体和水面之间，还没落下。离期限越近，它离水面越近。
 //         结果到来时它落进水里，激起涟漪。
-//   光柱：迭代时刻，倒影经得起检验，一道光从水里升起，接到珍珠身上。
+//   光柱：迭代时刻，倒影经得起检验，一道光从水里升起，接到晶体身上。
 import * as THREE from 'three';
 import { createColumnMaterial, createMoteMaterial, createDropMaterial, glowTexture } from './materials.js';
 import { damp } from './motion.js';

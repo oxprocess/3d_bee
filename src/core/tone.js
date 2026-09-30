@@ -5,7 +5,7 @@ import { appleTone, muted, deepen } from './color.js';
 import { RULE } from './growth.js';
 
 const TONES = {
-  apple: appleTone, // Apple Intelligence 式：按色相取饱和度与亮度，暖色饱满、冷色轻透
+  apple: appleTone, // Apple Intelligence 式：按色相取饱和度与亮度，鲜艳而明亮
   expanse: muted, // The Expanse 式：降饱和、压暗
   lit: (hex) => hex, // 珍珠母：数据颜色原样
 };

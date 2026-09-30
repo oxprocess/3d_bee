@@ -27,7 +27,7 @@ $('#lensBtn').addEventListener('click', () => {
   $('#lensBtn').setAttribute('aria-pressed', String(lens.on));
 });
 
-// 选一颗珍珠：缩略图由数据直接算出
+// 选一颗晶体：缩略图由数据直接算出
 const views = Object.fromEntries($$('#picks button').map((b) => [b.dataset.ledger, deriveView(normalizeLedger(LEDGERS[b.dataset.ledger]))]));
 const markPick = (id) => $$('#picks button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ledger === id)));
 $$('#picks button').forEach((b) => {

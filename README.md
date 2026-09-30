@@ -1,19 +1,19 @@
 # derbeebee 3D 形态
 
-一颗悬在水面上的珍珠，和它在水里的倒影。珍珠是本体（现在替你准备下一步的方法），倒影是影子（正在练习的新方法），涟漪是一件真实发生的事。这个仓库把它做成了可以转动、可以一层层挖到最深、每个细节都接着数据的 3D 形态，并拆成可以复用的模块。
+一颗悬在水面上的晶体，和它在水里的倒影。晶体是本体（现在替你准备下一步的方法），倒影是影子（正在练习的新方法），涟漪是一件真实发生的事。这个仓库把它做成了可以转动、可以一层层挖到最深、每个细节都接着数据的 3D 形态，并拆成可以复用的模块。
 
 ## 打开看
 
 不用安装，直接双击（离线可用，单个文件）：
 
-- `dist/index.html`：**形态走查**。左边一段段读生长过程与分析，右边的珍珠跟着演到哪一段
-- `dist/lab.html`：**形态实验台**。换珍珠、落一件事、挖到最深、打开接口透视，全部模块一起试
+- `dist/index.html`：**形态走查**。左边一段段读生长过程与分析，右边的晶体跟着演到哪一段
+- `dist/lab.html`：**形态实验台**。换晶体、落一件事、挖到最深、打开接口透视，全部模块一起试
 
 怎么碰它：拖动转动 · 双指张开 / Ctrl + 滚轮往里挖一层 · 轻点选中一代、一次 · 长按数一数 · 双击复位。键盘：←→↑↓ · + − · Enter · C · Esc。
 
 完整的规则、公式和接口在 [`docs/spec.md`](docs/spec.md)。
 
-色彩定为 **Apple Intelligence 式**，质感是**釉面月光石**：光谱在它身体里，隔着一层磨砂玻璃；里面隐约看得见一圈圈年轮，一片柔光浮在表面下，轮廓一道细亮边，主光跟着你的指针；没有光晕。质感的调研与参数见 spec 第 11.6 节、详图 [`docs/material-glass.jpg`](docs/material-glass.jpg)。每一类事的颜色落在它长出来的那一侧，长得越多那一片越宽，代数越多颜色越浓；诞生时只有很淡的一圈。详图 [`docs/color-apple.jpg`](docs/color-apple.jpg)，规则见 spec 第 11 节。另外两个方向（珍珠母、The Expanse 式）留作对比：[`docs/color-directions.jpg`](docs/color-directions.jpg)，在实验台左侧可以切换。
+形状是一颗**晶体**：赤道上一类事一个角（工作、健康、朋友、家人），哪一类经历得多，那个角就伸得远；轮廓修长，上尖短、下尖长；每一代是一个完整的小晶体，一个套一个。色彩是 **Apple Intelligence 式**的极光五彩，质感是**极光水晶**：外面一块打磨光滑的清玻璃，里面一颗更瘦的晶体（心）是鲜亮的极光，它的光在玻璃里淡淡散开；转动时心有一点视差，主光跟着你的指针；没有光晕。每一类事的颜色在它的那个角，长得越多那一片越宽，代数越多颜色越浓；诞生时颜色都在，都很淡。详图 [`docs/crystal-aurora.jpg`](docs/crystal-aurora.jpg)，规则见 spec 第 7、11 节。另外两个方向（珍珠母、The Expanse 式）留作对比：[`docs/color-directions.jpg`](docs/color-directions.jpg)，在实验台左侧可以切换。
 
 ## 结构
 
@@ -22,10 +22,10 @@ src/
   core/        数据：账本（只追加）、从账本推导的形态状态、生长规则、演示数据
     ledger.js    createStore / reduce / canInherit
     view.js      deriveView / BINDINGS（每个细节 ← 哪个字段）
-    growth.js    RULE / layerSpec / radiiField / restPose
+    growth.js    RULE / layerSpec / radiiField / diamondField / restPose
     tone.js      显示色调：3D、卡片、时间轴用同一套颜色
     demo-data.js 宽展、收束、偏展、转向、诞生、爸妈出游
-  three/       3D：PearlStage（珍珠、倒影、水面、水滴、光柱、手势、挖掘）
+  three/       3D：PearlStage（晶体、倒影、水面、水滴、光柱、手势、挖掘）
   ui/          组件（Web Components）与设计令牌 dbb.css
   pages/       两个页面的脚本与样式
   index.html   形态走查（开发版）

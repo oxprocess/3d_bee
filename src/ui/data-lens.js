@@ -1,5 +1,5 @@
 // 接口透视：打开后，每个视觉细节旁边标出它由哪个数据字段驱动、现在的值是多少。
-// 它是一张活的对照表：换一颗珍珠、落一件事，数值跟着变。
+// 它是一张活的对照表：换一颗晶体、落一件事，数值跟着变。
 import { DbbElement, esc, define } from './base.js';
 import { BINDINGS } from '../core/view.js';
 
@@ -7,7 +7,6 @@ import { BINDINGS } from '../core/view.js';
 const ANCHOR = {
   form: ['L', 'pearl.left'],
   spectrum: ['L', 'pearl.left'],
-  shells: ['R', 'pearl.side'],
   layers: ['L', 'pearl.top'],
   pose: ['L', 'pearl.center'],
   breath: ['L', 'pearl.top'],
@@ -21,7 +20,7 @@ const ANCHOR = {
   lag: ['R', 'shadow.side'],
   dirs: ['R', 'dir.work', 'dir.family'],
 };
-const ORDER = ['form', 'spectrum', 'shadowShape', 'clarity', 'droplet', 'ripple', 'layers', 'shells', 'lag', 'glow', 'outer', 'lamellae', 'dirs', 'pose', 'breath'];
+const ORDER = ['form', 'spectrum', 'shadowShape', 'clarity', 'droplet', 'ripple', 'layers', 'lag', 'glow', 'outer', 'lamellae', 'dirs', 'pose', 'breath'];
 
 export class DataLens extends DbbElement {
   bind({ stage }) {

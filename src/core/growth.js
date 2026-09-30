@@ -232,3 +232,31 @@ export function restPose(layers, rule = RULE) {
 export function practiceTint(hex, progress) {
   return mixHex(PRACTICE_MINT, hex ?? PRACTICE_MINT, 0.18 + 0.22 * clamp01(progress));
 }
+
+// 菱形晶体（双锥）：赤道上每一类事一个角，上下两个尖。
+// 第 k 代的外壳：朝类别 c 的角伸出 e_k(c) = R_k(d_c)（生长规则在那个方向上的半径）；
+// 上下两个尖是框，不是数据：高度按赤道各角的平均远近定。轮廓参照那颗绿色的宝石：修长，上尖短、下尖长，
+// 最宽的一圈在偏上的地方（高约为宽的 1.4 倍），像一颗悬着的晶体；哪一类事长得多，那个角就伸得远。
+// R_k 一层比一层大，所以每一代都是一个完整的小晶体，一个套一个（像幻影水晶）。
+// 类别少于 3 个时，用四个方向（0°、90°、180°、270°）撑起赤道。
+export const DIAMOND = Object.freeze({ top: 1.22, bottom: 1.6 });
+
+export function diamondField(view, { withCandidate = true, rule = view.rule ?? RULE } = {}) {
+  let cats = [...view.cats.values()].sort((a, b) => a.az - b.az);
+  if (cats.length < 3) cats = [0, 90, 180, 270].map((d) => ({ id: null, az: (d * Math.PI) / 180 }));
+  const n = cats.length;
+  const layers = view.layers.slice();
+  const cand = withCandidate && view.shadow?.candidate ? view.shadow.candidate : null;
+  if (cand) layers.push(cand);
+  const dirs = new Float32Array((n + 2) * 3);
+  cats.forEach((c, i) => dirs.set([Math.cos(c.az), 0, Math.sin(c.az)], 3 * i));
+  dirs.set([0, 1, 0], 3 * n);
+  dirs.set([0, -1, 0], 3 * (n + 1));
+  const f = radiiField(layers, dirs, rule);
+  const shells = layers.map((_, k) => {
+    const eq = cats.map((_, i) => f.R[k * f.M + i]);
+    const mean = eq.reduce((a, b) => a + b, 0) / n;
+    return { eq, top: DIAMOND.top * mean, bottom: DIAMOND.bottom * mean };
+  });
+  return { n, cats, az: cats.map((c) => c.az), dirs, T: f.T, M: f.M, layers, shells, hasCandidate: !!cand, bodyN: view.layers.length };
+}

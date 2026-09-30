@@ -1,4 +1,4 @@
-// 形态走查：读到哪一段，珍珠就演到哪一段。
+// 形态走查：读到哪一段，晶体就演到哪一段。
 import { boot, load, storyTo, themeToggle } from './boot.js';
 import { LEDGERS } from '../core/demo-data.js';
 import { deriveView, BINDINGS } from '../core/view.js';

@@ -20,7 +20,7 @@ export class ShadowMeter extends DbbElement {
         <article class="dbb-card dbb-shadow">
           <p class="dbb-eyebrow">倒影 · 影子 <span class="dbb-pill">和它一模一样</span></p>
           <h3>还没有开始练</h3>
-          <p class="dbb-kv">刚诞生，或刚继承：倒影和珍珠完全一样，清清楚楚。下一次结果到来，它就开始练一个新的方法。</p>
+          <p class="dbb-kv">刚诞生，或刚继承：倒影和晶体完全一样，清清楚楚。下一次结果到来，它就开始练一个新的方法。</p>
           <div class="dbb-slots" aria-hidden="true">${Array.from({ length: need }, () => '<i></i>').join('')}</div>
           <p class="dbb-rule">满 ${need} 次比较、并且影子比本体更准，才会长到它身上。</p>
         </article>`;
@@ -44,7 +44,7 @@ export class ShadowMeter extends DbbElement {
         <p class="dbb-kv">已比较 <em>${s.n}</em>/${need} 次 · 影子更准 <em>${s.wins}</em> 次 · 清晰度 <em>${s.clarity.toFixed(2)}</em> · 同步 <em>${s.agreement.toFixed(2)}</em></p>
         <p class="dbb-rule${s.canInherit ? ' ok' : ''}">${s.canInherit
           ? `已满足：满 ${need} 次，且影子更准。到了迭代时刻，它会升上来，成为新的一层。`
-          : `满 ${need} 次、并且影子比本体更准，才会长到它身上；没练好，就继续留在水里练，珍珠不变。`}</p>
+          : `满 ${need} 次、并且影子比本体更准，才会长到它身上；没练好，就继续留在水里练，晶体不变。`}</p>
       </article>`;
   }
 }

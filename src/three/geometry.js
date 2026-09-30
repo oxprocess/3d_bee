@@ -8,8 +8,6 @@ import * as THREE from 'three';
 import { diamondField, surfaceColorAt, layerRgbList } from '../core/growth.js';
 import { hexToRgb } from '../core/color.js';
 
-export const MAX_FACES = 16; // 着色器最多认 16 个面（8 类事）
-
 // 一次算好：每一层（含候选层）的角与尖
 export function shapeField(view, { withCandidate = true, mapColor = null } = {}) {
   const D = diamondField(view, { withCandidate });
@@ -41,11 +39,6 @@ export function shellFaces(F, k, extra = 0) {
   for (let i = 0; i < n; i++) add([A, V[i], V[(i + 1) % n]], [n, i, (i + 1) % n], true);
   for (let i = 0; i < n; i++) add([B, V[i], V[(i + 1) % n]], [n + 1, i, (i + 1) % n], false);
   return faces;
-}
-
-// 每个面的平面（局部坐标，法线朝外，n·p = d）：着色器用它画棱、找视线从哪里离开、画里面的幻影
-export function shellPlanes(F, k, extra = 0) {
-  return shellFaces(F, k, extra).map((f) => [f.n.x, f.n.y, f.n.z, f.d]);
 }
 
 // 第 k 层外壳的一部分：'full' 整颗、'upper' 上锥、'lower' 下锥

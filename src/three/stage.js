@@ -8,11 +8,11 @@
 //            深度就是时间：剥掉 k 层，看到的就是 k 代以前的它。最深处是核——诞生时的它。
 // 在剖面上点一圈，镜头推近那一代；再点，选中其中一条细纹——那一次真实的比较。
 import * as THREE from 'three';
-import { RULE, DIAMOND } from '../core/growth.js';
+import { RULE } from '../core/growth.js';
 import { hexToRgb, vivid, muted, mixHex, oklabOf } from '../core/color.js';
 import { setTone, tone, layerTone } from '../core/tone.js';
-import { createNacre, nacreShared, createCapMaterial, MAX_LAYERS, MAX_LAMELLAE, MAX_SHELLS, MAX_FACES } from './materials.js';
-import { shapeField, surfaceGeometry, capGeometry, outlineGeometry, radiusAt, extents, shellPlanes } from './geometry.js';
+import { createNacre, nacreShared, createCapMaterial, MAX_LAYERS, MAX_LAMELLAE } from './materials.js';
+import { shapeField, surfaceGeometry, capGeometry, outlineGeometry, radiusAt, extents } from './geometry.js';
 import { buildEnvironment } from './env.js';
 import { readPalette, watchTheme, reducedMotion, LOOKS } from './palette.js';
 import { Animator, Orientation, damp, dampVec3, ease } from './motion.js';
@@ -202,7 +202,6 @@ export class PearlStage extends EventTarget {
     this.F = F;
     const N = view.layers.length;
     this.N = N;
-    this.rowOffset = Math.max(0, N - MAX_LAYERS); // 刻面纹理只放得下最外面的 MAX_LAYERS 代
     this.ext = extents(F, N - 1);
     this.layerMax = view.layers.map((_, k) => extents(F, k).max);
     this.hoverTarget = this.ext.bottom * WS + GAP;
@@ -214,8 +213,6 @@ export class PearlStage extends EventTarget {
     else this.swapGeometry(this.proxy, geo);
 
     this.updateShadow(view, transition === 'none' || first ? 0 : 1.2);
-    // 外壳在长大的那几秒，着色器里的刻面也跟着一起长（和网格同一个节奏），心和棱才对得上
-    this.planeMorph = this.reduce || first ? null : { body: this.proxy.morphTargetInfluences?.length ? dur : 0, shadow: transition === 'none' ? 0 : 1.2 };
     this.writeCapData();
     const p = view.pose;
     this.restTilt.setFromAxisAngle(new THREE.Vector3(...p.axis), p.angle);
@@ -274,63 +271,6 @@ export class PearlStage extends EventTarget {
       st.matureT = clamp((n - 1) / 4, 0, 1);
       // 第一次出现：分量直接到位，浓度从诞生般的淡慢慢亮起来——它醒过来（减少动态效果时直接到位）
       if (snap || this.reduce) { st.w.set(st.wT); st.mature = this.reduce ? st.matureT : 0; }
-    }
-    this.updateCrystal();
-  }
-
-  // 晶体：每一代外壳的刻面写进一张小纹理（一行一代），着色器用它画棱、透过晶体看见的背面的棱、里面的幻影。
-  // 倒影的最外一层按练习进度多长出一点；幻影从最外一层往里数，最多 MAX_SHELLS 个，颜色是那一代的颜色（提亮）
-  updateCrystal() {
-    const F = this.F, v = this.view;
-    if (!F || !v) return;
-    const N = v.layers.length;
-    const rows = Math.min(N, MAX_LAYERS);
-    this.rowOffset = N - rows;
-    const p = v.shadow.mode === 'practice' && F.hasCandidate ? v.shadow.progress : 0;
-    const pm = this.planeMorph;
-    this.planeMorph = null;
-    const fill = (u, extraOuter, morph) => {
-      const tex = u.uPlanes.value, data = tex.image.data;
-      const faces = Math.min(2 * F.n, MAX_FACES);
-      const was = 4 * u.uOuterRow.value * MAX_FACES;
-      const from = morph > 0 && u.uFaces.value === faces ? data.slice(was, was + 4 * MAX_FACES) : null;
-      data.fill(0);
-      for (let r = 0; r < rows; r++) {
-        const k = this.rowOffset + r;
-        shellPlanes(F, k, k === N - 1 ? extraOuter : 0).slice(0, MAX_FACES).forEach((pl, j) => data.set(pl, 4 * (r * MAX_FACES + j)));
-      }
-      tex.needsUpdate = true;
-      u.uFaces.value = faces;
-      u.uOuterRow.value = rows - 1;
-      if (!from || !from.some((x) => x !== 0)) return;
-      // 从旧的外壳长到新的外壳：平面按同一个节奏插值
-      const at = 4 * (rows - 1) * MAX_FACES;
-      const to = data.slice(at, at + 4 * MAX_FACES);
-      const token = (u.planeToken = (u.planeToken ?? 0) + 1);
-      this.animator.run(morph, (t) => {
-        if (u.planeToken !== token) return;
-        for (let j = 0; j < faces; j++) {
-          const o = 4 * j;
-          const nx = from[o] + (to[o] - from[o]) * t, ny = from[o + 1] + (to[o + 1] - from[o + 1]) * t, nz = from[o + 2] + (to[o + 2] - from[o + 2]) * t;
-          const d = from[o + 3] + (to[o + 3] - from[o + 3]) * t;
-          const l = Math.hypot(nx, ny, nz) || 1;
-          data[at + o] = nx / l; data[at + o + 1] = ny / l; data[at + o + 2] = nz / l; data[at + o + 3] = d / l;
-        }
-        tex.needsUpdate = true;
-      }, { easing: ease.inOutCubic });
-    };
-    fill(this.shared, 0, pm?.body ?? 0);
-    fill(this.sShared, p, pm?.shadow ?? 0);
-    const ph = [];
-    const maxPh = Math.min(MAX_SHELLS, this.look.glass?.phantoms ?? MAX_SHELLS);
-    for (let k = N - 2; k >= this.rowOffset && ph.length < maxPh; k--) {
-      const L = v.layers[k];
-      ph.push(mixHex('#FFFFFF', this.mapColor(L.color, L.core, L), L.core ? 0 : 0.55));
-    }
-    for (const u of [this.shared, this.sShared]) {
-      u.uShellN.value = ph.length;
-      ph.forEach((c, i) => u.uShellCol.value[i].set(c));
-      u.uShellAmt.value = this.look.glass?.shells ?? 0;
     }
   }
 
@@ -417,7 +357,6 @@ export class PearlStage extends EventTarget {
       const mat = createNacre({ shared: this.shared, dissolve: true });
       this.applyMaterialLook(mat);
       mat.userData.own.uDisR.value = Math.max(0.3, extents(F, k).full);
-      mat.userData.own.uRow.value = k - this.rowOffset; // 这一层自己的刻面（画它自己的棱）
       const lower = new THREE.Mesh(surfaceGeometry(F, k, 'lower'), mat);
       const upper = new THREE.Mesh(surfaceGeometry(F, k, 'upper'), mat);
       lower.userData.layer = k;
@@ -1079,19 +1018,13 @@ export class PearlStage extends EventTarget {
       const gl = this.look.glass;
       const mode = pal.dark ? 'dark' : 'light';
       u.uGlaze.value = gl ? gl.glaze : 0;
-      u.uShellAmt.value = gl ? gl.shells : 0;
       if (gl?.facet) u.uFacetK.value.set(...gl.facet);
       u.uLit.value = gl?.lit ?? 0;
       u.uIri.value = gl?.iri ?? 0;
       u.uGloss.value = gl?.gloss ?? 0;
-      if (gl?.lines) u.uLines.value.set(...gl.lines[mode]);
-      if (gl?.edge) u.uEdgeCol.value.set(gl.edge[mode]);
-      u.uBand.value = gl?.band ?? 0;
       u.uChromaGain.value = gl?.chroma?.[0] ?? 1;
       u.uChromaCap.value = gl?.chroma?.[1] ?? 0.16;
       u.uDeep.value = gl?.deep?.[pal.dark ? 1 : 0] ?? 0;
-      u.uTopR.value = DIAMOND.top;
-      u.uBotR.value = DIAMOND.bottom;
       const studio = gl?.studio?.[mode];
       if (studio) {
         u.uStudioSky.value.setRGB(...studio.sky);

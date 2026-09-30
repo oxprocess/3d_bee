@@ -28,7 +28,7 @@ kbd { font: 12px var(--dbb-mono); padding: 0 5px; border-radius: 4px; box-shadow
 }
 .top > * { pointer-events: auto; }
 .wordmark { font-family: Georgia, "Times New Roman", serif; letter-spacing: 0.14em; color: var(--dbb-violet); font-size: 15px; }
-.wordmark .mark { display: inline-block; height: 34px; margin: -8px 7px -12px 0; vertical-align: middle; }
+.wordmark .mark { display: inline-block; height: 44px; margin: -13px 2px -17px -8px; vertical-align: middle; }
 .wordmark .mark svg { display: block; height: 100%; width: auto; }
 .top-nav { display: flex; align-items: center; gap: 4px; font-size: 13px; }
 .top-nav a { text-decoration: none; color: var(--dbb-body); padding: 4px 10px; border-radius: 999px; }
@@ -170,18 +170,21 @@ table.compact td:first-child { white-space: normal; }
 .logo-tile figcaption { font-size: 12px; color: #8A8A96; text-align: center; }
 .logo-tile.dark figcaption { color: #9A9AA8; }
 .logo-tile > span { display: block; }
-.logo-tile svg { display: block; height: 124px; width: auto; }
-.logo-hero .logo-tile svg { height: 210px; }
+.logo-tile svg { display: block; height: 150px; width: auto; }
+.logo-hero .logo-tile svg { height: 260px; }
 .logo-tile.icon svg { height: 104px; }
 .logo-tile.sizes { grid-template-columns: repeat(3, auto); align-items: end; justify-content: center; column-gap: 14px; }
 .logo-tile.sizes figcaption { grid-column: 1 / -1; }
 .logo-tile.sizes > span:nth-child(1) svg { height: 48px; }
 .logo-tile.sizes > span:nth-child(2) svg { height: 32px; }
 .logo-tile.sizes > span:nth-child(3) svg { height: 16px; }
-.logo-tile.wide { grid-column: span 2; }
+.logo-tile.sizes.l > span:nth-child(1) svg { height: 64px; }
+.logo-tile.sizes.l > span:nth-child(2) svg { height: 40px; }
+.logo-tile.sizes.l > span:nth-child(3) svg { height: 24px; }
+.logo-tile.wide { grid-column: 1 / -1; }
 .logo-tile.wide svg { height: 70px; }
 @media (max-width: 720px) {
   .logo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .logo-hero .logo-tile svg { height: 150px; }
+  .logo-hero .logo-tile svg { height: 180px; }
   .logo-tile.wide svg { height: 52px; }
 }

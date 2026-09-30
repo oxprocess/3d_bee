@@ -318,45 +318,60 @@
 
 ## 13. 标志：一个主体，一个影子
 
-2D 的标志就是 3D 的那颗晶体：诞生时的那一颗，四个角一样远，一个角正对你；下面是它在水里的影子。主体是现在替你做事的方法，影子是正在练习的新方法（详图 [`logo.jpg`](logo.jpg)，文件在 [`brand/`](brand/)）。
+2D 的标志就是 3D 的那颗晶体：诞生时的那一颗，四个角一样远，一个角正对你；身后藏着它的影子。主体是现在替你做事的方法，影子是正在长成的下一代：形影不离，斜过身来看你（详图 [`logo.jpg`](logo.jpg)，文件在 [`brand/`](brand/)）。
 
 | 部分 | 做法 |
 |---|---|
 | 形 | 由同一条生长规则算出来（`SOFT`、`DIAMOND`）：晶体前后对称，正面看到的轮廓就是它的中截面 `r(θ) = softPoint(planes, cos θ, sin θ, 0)`；按弯的程度取 72 个点，转成平滑的三次贝塞尔。3D 怎么磨圆，标志就怎么圆 |
-| 颜色 | 极光五彩，和 3D 同一套色调：左到右兰紫、蓝、青、绿、金、琥珀、珊瑚，色带斜 10°，像光在流；上尖薄荷；往下尖先是一段清透的亮，再到兰紫（相冲的颜色之间不走灰，和 3D 一样） |
-| 光 | 上半映出头顶的光，下沿一条清楚的地平线（落在赤道上，和 3D 一样）；左边朝光亮一点，右下的面深一点，两个面之间是柔的；朝光的那条边（左上）一道很淡的光。没有光晕、没有投影 |
-| 影子 | 以水面为轴倒过来，只映颜色、不映头顶的光，越往下越淡：浅色底露出主体高度的 60%；深色底露出 50%、颜色提亮（低透明度的颜色落在黑上会发灰） |
-| 单色与小尺寸 | 单色版的影子可以是三道横线（水里的倒影，印刷、雕刻都能做）；页签图标只留主体（16 像素里影子会糊） |
-| App 图标 | 连续曲率的圆角方块（圆角约为边长的 22.37%），晶体的主体约占高度的 46%，影子淡进底色。做 iOS 的 Liquid Glass 图标时分三层：底色、影子、主体 |
-| 字标 | 沿用页面上的衬线小写、字距放宽；字的 x 高度骑在晶体的地平线上 |
-| 动 | 色带在 −15° 与 −5° 之间缓缓摆动，16 秒一个来回，和 3D 的颜色一样慢；减少动态效果时不动 |
+| 颜色 | 主体就是 App 里的那颗菱形（derbeebee 的 2D 形象）：颜色、光晕与玻璃来自网页版的球，五色极光 `#ffea00` 黄、`#ff00aa` 洋红、`#8800ff` 紫、`#0055ff` 蓝、`#00ff88` 绿在身体里流，停在标准的那一刻（第 4.5 秒）：上尖浅天蓝，中间一横从左到右是薰衣草紫、蓝、青、绿、黄绿，洋红沉在下尖。标志里用的是从这一刻取下来的 9×12 颜色网格（`FIELD`），画成小方块，模糊（标准差是一格宽的 0.62 倍）后按轮廓裁出来：没有条纹、没有横线 |
+| 边与光晕 | 左上一道细细的蓝 `#557CF0`，像玻璃的边；右边一道淡淡的亮边。四周一圈很宽很柔的光晕，照着 App 里的球：颜色放大到 1.3 倍、模糊、透明度 0.35，深色底上降三成（不然像霓虹灯） |
+| 影子 | 同一颗晶体，以下尖为轴放大 1.08 倍、往右转 7°，再往上提主体高度的 3%：下尖藏在主体后面，上半从主体的右上探出来。边是柔的（高斯模糊，标准差是轮廓单位半径的 4.5%，深色底 6%），没有轮廓线，不映光，越往下越淡（到下尖剩 20%）。颜色是长春花蓝 → 蓝紫 → 紫：浅色底上透明度 0.34，比底色深一点，是影子；深色底上透明度 0.4，比底色亮一点，是透过来的光，远的那条边再有一道很淡的极光色 |
+| 神秘 | 它斜过身来看你：像人从别人身后探出身，脚不动，身子往右斜，稍稍踮起脚。大一点、斜一点、踮一点，都只是“一点”：它是预示，不是宣告。第一眼只看见一颗晶体；再看，才发现身后有东西在看你 |
+| 单色与小尺寸 | 单色版的主体是一块平的颜色，影子用细横线排出来（版画里画阴影的办法，也像全息投影的扫描线），越往下线越细，主体四周留一道空；页签图标只留主体，也不要光晕（16 像素里影子和光晕都会糊） |
+| App 图标 | 连续曲率的圆角方块（圆角约为边长的 22.37%），晶体的主体约占高度的 44%；主体和影子一起放在视觉中心，影子只算一半的分量。做 iOS 的 Liquid Glass 图标时分三层：底色、影子、主体 |
+| 字标 | 沿用页面上的衬线小写、字距放宽；字的 x 高度骑在晶体最宽的那一圈（赤道）上，从影子的右边起 |
+| 动 | 平时影子整个藏在主体身后（一样大、不斜、看不见）；页面打开 1.2 秒后，它以下尖为轴侧过身来（1 秒，多斜 1.2° 再落回来，像探头时那一下），看你一下（1 秒），再藏回去（1.2 秒），每 12 秒一次；主体不动，里面的几团光各自慢慢漂（13–31 秒一圈）。静态的标志是它看你那一下的定格；减少动态效果时不动 |
 
 为什么这样设计：
 
 - **不用星光。**星光（✨）几乎所有 AI 都在用；NN/g 与 Google 的研究都发现它意思含糊，还暗示“魔法”。我们的形是晶体和它的影子：产品里本来就有的东西，只属于我们。
+- **影子是影子，不是第二个东西。**试过两条弯路：一圈均匀的亮边，会被看成描边或间隔；影子太大、太远，又成了飘在身后的另一个东西。投影的研究说，影子离物体越远，物体看起来离墙越远，影子的边越糊，墙越远；所以影子贴得近、边柔而不散，只往一个方向落。
+- **影子不用黑。**雷诺阿说“影子从来不是黑的，它总有颜色”，印象派画影子用蓝紫；晶体透光，透过来的光本来就带颜色；极光的顶被阳光照到时也是这种蓝紫。好的投影也不用纯黑：用物体自己的颜色、低透明度、大模糊。紫色在 AI 品牌里代表未知与好奇。
+- **神秘在“再看一眼”里。**幽玄：美在表面之下，说一半，留一半。马格利特：“我们看到的每一样东西都藏着另一样东西，我们总想看见被看见的东西挡住的那一样”；影子大半藏在主体后面。谷崎润一郎：美不在物体本身，而在物与物之间的阴翳；标志的美在主体和影子之间那一道柔的明暗。
+- **形影不离，斜过身来看你。**影子是一直跟着你的那一个（“对影成三人”）；它的脚和主体藏在一起，身子斜过来看你。肢体语言的研究说，身子前倾是好奇与投入，歪着头的人被看作更专注、更有同理心：“我在认真听，我没有敌意”。一种还没完全显形的智能，正在认真看你。
 - **圆润。**Gemini 2025 年把星形的尖削圆，因为尖在小尺寸上会缩成细线，也更友好；这颗晶体本来就是圆润的（11.6）。
-- **光就是标志。**Apple Intelligence 的标志和 Siri 的边缘光是同一种光；这里的标志和 3D 的晶体是同一种极光、同一条地平线。
+- **光就是标志。**Apple Intelligence 的标志和 Siri 的边缘光是同一种光；这里主体的颜色也是一片柔的光，一团一团叠在一起，不用条纹。
+- **只看见一下。**会动的标志里，影子平时藏着，隔一会儿才侧身看你一下：只看见一下，才让人想再看，也更像一种有自己念头的东西。
 - **温和的字标。**OpenAI 2025 年的改版把定制字体做得带一点不规则，让它更有人味；这里的字标是衬线小写，像一个名字。
-- **对称。**研究发现对称的标志让人觉得更稳、品质感更高；主体与影子上下对称。
 - **每个人一个。**MIT Media Lab 的动态标志有 4 万种组合，每个人一个；在这里，每个人的晶体（缩略图）就是他自己的标志，品牌标志是诞生时的那一颗。
-- **先黑白，后颜色。**渐变在 16 像素里会糊成一个平均色，所以先让形在单色、小尺寸下立住，再上渐变。
+- **先黑白，后颜色。**渐变、模糊在 16 像素里会糊成一个平均色，所以先让形在单色、小尺寸下立住（单色的主体是平的，影子改成细横线，页签只留主体），再上颜色。
 
-接口：`ui/logo.js` 的 `logoSvg({ theme, mono, water: 'soft' | 'lines' | 'none', line, motion })` · `appIconSvg({ theme })` · `lockupSvg({ theme, mono })` · `faviconHref()`；页面上写 `data-logo='{"kind": "mark" | "icon" | "lockup", …}'`，没写 `theme` 的跟着页面的深浅走。`npm run brand` 导出 `docs/brand/*.svg`。
+接口：`ui/logo.js` 的 `logoSvg({ theme, mono, shadow, glow, motion, behind })`（`behind` 可以改影子的 `k`、`dx`、`dy`、`rot`、`a`、`blur`、`fade`、`fringe`）· `appIconSvg({ theme })` · `lockupSvg({ theme, mono })` · `faviconHref()`；页面上写 `data-logo='{"kind": "mark" | "icon" | "lockup", …}'`，没写 `theme` 的跟着页面的深浅走。`npm run brand` 导出 `docs/brand/*.svg`。
 
 参考：
+[Yūgen（Britannica）](https://www.britannica.com/art/yugen-Japanese-art) ·
+[In Praise of Shadows（The Marginalian）](https://www.themarginalian.org/2015/05/28/in-praise-of-shadows-tanizaki/) ·
+[The Son of Man（Wikipedia）](https://en.wikipedia.org/wiki/The_Son_of_Man) ·
+[How the Impressionists painted shadows](https://www.liveabout.com/impressionist-techniques-what-colors-are-shadows-2578052) ·
+[The Colors of the Aurora（NPS）](https://www.nps.gov/articles/-articles-aps-v8-i1-c9.htm) ·
+[Blue sunlit aurora rays（Nature）](https://www.nature.com/articles/1421034a0) ·
+[Why purple dominates AI branding](https://simplyputpsych.co.uk/monday-musings-1/the-rise-of-purple-in-ai-branding-a-trend-rooted-in-symbolism-psychology-and-strategy) ·
+[Scaling depth from shadow offset（PMC）](https://pmc.ncbi.nlm.nih.gov/articles/PMC8631054/) ·
+[Kersten Lab：shadow demos](http://vision.psych.umn.edu/users/kersten/kersten-lab/demos/shadows.html) ·
+[Aerial perspective（Wikipedia）](https://en.wikipedia.org/wiki/Aerial_perspective) ·
+[Shadows in UI design（LogRocket）](https://blog.logrocket.com/ux-design/shadows-ui-design-tips-best-practices/) ·
+[Closure（Gestalt principles）](https://www.gestaltprinciples.com/principles/closure) ·
+[Forward lean body language](https://cognitivetrain.com/body-language-forward-lean/) ·
+[Head tilt body language](https://cognitivetrain.com/body-language-head-tilt/) ·
 [Rise of the AI Sparkle Icon（Google Design）](https://design.google/library/ai-sparkle-icon-research-pozos-schmidt) ·
 [The Proliferation and Problem of the Sparkles Icon（NN/g）](https://www.nngroup.com/articles/ai-sparkles-icon-problem/) ·
-[Slate：为什么星光成了 AI 的符号](https://slate.com/technology/2025/12/artificial-intelligence-tools-icon-google-gemini-chatgpt-design.html) ·
 [Gemini 的新标志（9to5Google）](https://9to5google.com/2025/07/01/new-gemini-logo/) ·
-[Google’s new Gemini logo（Creative Bloq）](https://www.creativebloq.com/design/logos-icons/googles-new-gemini-logo-finally-feels-part-of-the-family) ·
 [Apple joins the race to find an AI icon（TechCrunch）](https://techcrunch.com/2024/06/15/apple-joins-the-race-to-find-an-ai-icon-that-makes-sense/) ·
 [OpenAI 的改版（Fast Company）](https://www.fastcompany.com/91273217/open-ai-rebrand-chat-gpt-logo) ·
-[Meta AI ring（Animade）](https://animade.tv/work/meta-ai-ring) ·
 [MIT Media Lab 的 4 万种标志（Fast Company）](https://www.fastcompany.com/1663378/mit-media-labs-brilliant-new-logo-has-40000-permutations-video) ·
-[The impact of logo symmetry on perceived product quality（PLOS ONE）](https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0317229) ·
 [Logo Scalability](https://www.logodesign.net/blog/logo-scalability/) ·
 [Crafting Liquid Glass app icons with Icon Composer](https://www.createwithswift.com/crafting-liquid-glass-app-icons-with-icon-composer/) ·
-[Aurora UI](https://uxdesign.cc/aurora-ui-new-visual-trend-for-2021-c763a7daa7e2)
+[Aurora UI](https://superdesign.dev/styles/aurora)
 
 ## 12. 已知限制
 

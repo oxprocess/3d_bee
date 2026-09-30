@@ -22,7 +22,7 @@ kbd { font: 11px var(--dbb-mono); padding: 0 5px; border-radius: 4px; box-shadow
   border-bottom: 1px solid var(--dbb-line);
 }
 .wordmark { font-family: Georgia, "Times New Roman", serif; letter-spacing: 0.14em; color: var(--dbb-violet); font-size: 15px; }
-.wordmark .mark { display: inline-block; height: 34px; margin: -8px 7px -12px 0; vertical-align: middle; }
+.wordmark .mark { display: inline-block; height: 44px; margin: -13px 2px -17px -8px; vertical-align: middle; }
 .wordmark .mark svg { display: block; height: 100%; width: auto; }
 .bar h1 { font: 700 18px var(--dbb-serif); color: var(--dbb-ink); }
 .bar-nav { display: flex; gap: 4px; font-size: 13px; }

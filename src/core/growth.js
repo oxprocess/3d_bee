@@ -10,7 +10,7 @@
 // 因此可以解析地求法线，也可以对任意方向切开、剥开。
 
 import { clamp01 } from './rng.js';
-import { deepen, hexToRgb, mixHex, hueOf } from './color.js';
+import { deepen, mixHex, hueOf } from './color.js';
 
 export const RULE = Object.freeze({
   coreRadius: 0.5, // 诞生时的核，第 1 代
@@ -174,29 +174,6 @@ export function surfaceNormal(x, y, z, r, gx, gy, gz, out) {
   out[0] = nx / l; out[1] = ny / l; out[2] = nz / l;
 }
 
-// 表面颜色：这个方向上是哪几代长出来的，就带哪几代的颜色（越外越新，权重越大）
-export function surfaceColorAt(layerRgb, T, M, i, k, out) {
-  let r = 0, g = 0, b = 0, ws = 0, wmax = 0;
-  for (let j = 1; j <= k; j++) {
-    const t = T[j * M + i];
-    const w = t * t * (1 + 1.4 * (j / k));
-    const c = layerRgb[j];
-    r += c[0] * w; g += c[1] * w; b += c[2] * w; ws += w;
-    if (w > wmax) wmax = w;
-  }
-  const white = layerRgb[0];
-  if (ws <= 0) { out[0] = white[0]; out[1] = white[1]; out[2] = white[2]; return; }
-  const dom = wmax / ws; // 这一侧越由一件事主导，颜色越饱满
-  const s = 0.5 + 0.35 * dom;
-  out[0] = white[0] + (r / ws - white[0]) * s;
-  out[1] = white[1] + (g / ws - white[1]) * s;
-  out[2] = white[2] + (b / ws - white[2]) * s;
-}
-
-export function layerRgbList(layers, mapColor = null) {
-  return layers.map((L) => hexToRgb(mapColor ? mapColor(L.color, L.core, L) : L.color).map((v) => v / 255));
-}
-
 export function fibonacciSphere(n) {
   const out = new Float32Array(n * 3);
   const ga = Math.PI * (3 - Math.sqrt(5));
@@ -240,6 +217,62 @@ export function practiceTint(hex, progress) {
 // R_k 一层比一层大，所以每一代都是一个完整的小晶体，一个套一个（像幻影水晶）。
 // 类别少于 3 个时，用四个方向（0°、90°、180°、270°）撑起赤道。
 export const DIAMOND = Object.freeze({ top: 1.22, bottom: 1.6 });
+
+// 圆润：尖角让人本能地警觉，圆的轮廓让人想靠近（曲率偏好、bouba/kiki）。晶体保留菱形的身份，
+// 棱和尖磨圆，用的是超椭圆——和 iOS 图标的圆角同一个道理，平的面到圆的棱曲率连续，找不到“圆角从哪里开始”：
+//   把每个面到中心的相对距离 t = n·p / d 按 P 次方合起来，F(p) = (Σ max(0, t)^P)^(1/P)，表面是 F = 1
+//   P 越大越接近尖锐的晶体；F 对 p 是一次齐次的，沿方向 ω 的半径直接是 r = g / F(ω)
+//   几个面交在一起的地方磨得最多：两个面的棱收进去一点，四个面的角多一点；
+//   上下两个尖再各加一个水平的面（在尖的高度的 tip 倍处），一起合进去，尖是一颗柔和的圆头
+//   g 把磨圆时收进去的补回来：面的中间微微鼓出来，整颗更饱满（像一颗卵石，想握在手里）
+//   F 对缩放不变：一代套一代的外壳，圆角也一层套一层（同心），像 Apple 的圆角与圆角之间那样对得上
+export const SOFT = Object.freeze({ P: 10, g: 1.06, tip: 0.86 });
+
+// 一层外壳的平面：上锥 n 个、下锥 n 个，再加上下两个圆头的面；每个面 n·p = d（法线朝外，d > 0），存成 [nx, ny, nz, 1/d, …]
+export function shellPlaneList(az, eq, top, bottom, soft = SOFT) {
+  const n = eq.length, planes = new Float64Array(n * 8 + (soft.tip ? 8 : 0));
+  const V = eq.map((e, i) => [Math.cos(az[i]) * e, 0, Math.sin(az[i]) * e]);
+  let o = 0;
+  const face = (A, B, C) => {
+    const u = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], v = [C[0] - A[0], C[1] - A[1], C[2] - A[2]];
+    let nx = u[1] * v[2] - u[2] * v[1], ny = u[2] * v[0] - u[0] * v[2], nz = u[0] * v[1] - u[1] * v[0];
+    const l = Math.hypot(nx, ny, nz) || 1;
+    nx /= l; ny /= l; nz /= l;
+    let d = nx * A[0] + ny * A[1] + nz * A[2];
+    if (d < 0) { nx = -nx; ny = -ny; nz = -nz; d = -d; }
+    planes.set([nx, ny, nz, 1 / Math.max(d, 1e-6)], o);
+    o += 4;
+  };
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    face([0, top, 0], V[i], V[j]);
+    face([0, -bottom, 0], V[i], V[j]);
+  }
+  if (soft.tip) {
+    planes.set([0, 1, 0, 1 / (soft.tip * top)], o);
+    planes.set([0, -1, 0, 1 / (soft.tip * bottom)], o + 4);
+  }
+  return planes;
+}
+
+// 圆润外壳在方向 (x, y, z)（单位向量）上离中心多远；给了 out，顺便写进那一点的法线（F 的梯度，朝外）
+export function softPoint(planes, x, y, z, out = null, soft = SOFT) {
+  const P = soft.P;
+  let sum = 0, gx = 0, gy = 0, gz = 0;
+  for (let o = 0; o < planes.length; o += 4) {
+    const t = (planes[o] * x + planes[o + 1] * y + planes[o + 2] * z) * planes[o + 3];
+    if (t <= 0) continue;
+    const w = Math.pow(t, P - 1);
+    sum += w * t;
+    const wd = w * planes[o + 3];
+    gx += wd * planes[o]; gy += wd * planes[o + 1]; gz += wd * planes[o + 2];
+  }
+  if (out) {
+    const l = Math.hypot(gx, gy, gz) || 1;
+    out[0] = gx / l; out[1] = gy / l; out[2] = gz / l;
+  }
+  return sum > 0 ? soft.g / Math.pow(sum, 1 / P) : 0;
+}
 
 export function diamondField(view, { withCandidate = true, rule = view.rule ?? RULE } = {}) {
   let cats = [...view.cats.values()].sort((a, b) => a.az - b.az);

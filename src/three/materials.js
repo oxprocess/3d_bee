@@ -1,4 +1,4 @@
-// 材质：晶体（本体与倒影；另有珍珠母、The Expanse 两个色彩方向）、剖面、水面、水滴、光柱。
+// 材质：晶体（本体与倒影）、剖面、水面、水滴、光柱。
 import * as THREE from 'three';
 
 export const MAX_LAYERS = 24;
@@ -52,38 +52,12 @@ float dbb_snoise(vec3 v){
 }
 `;
 
-// three r186 的 morphcolor_vertex 把 vec3 加到 vec4 的 vColor 上，编译失败；这里换成修正版。
-const MORPHCOLOR_FIX = /* glsl */ `
-#if defined( USE_MORPHCOLORS )
-  vColor *= morphTargetBaseInfluence;
-  for ( int i = 0; i < MORPHTARGETS_COUNT; i ++ ) {
-    #if defined( USE_COLOR_ALPHA )
-      if ( morphTargetInfluences[ i ] != 0.0 ) vColor += getMorph( gl_VertexID, i, 2 ) * morphTargetInfluences[ i ];
-    #elif defined( USE_COLOR )
-      if ( morphTargetInfluences[ i ] != 0.0 ) vColor.rgb += getMorph( gl_VertexID, i, 2 ).rgb * morphTargetInfluences[ i ];
-    #endif
-  }
-#endif
-`;
-
-// 本体共享的效果参数：微光、触摸的余温、倾听时的流光、新层的生长光
-export function nacreShared() {
+// 本体（或倒影）共享的参数：触摸的余温；光谱与玻璃
+export function crystalShared() {
   return {
-    uGlow: { value: 0 },
-    uGlowColor: { value: new THREE.Color('#ffffff') },
     uWarmPos: { value: new THREE.Vector3(0, 0, 50) },
     uWarmAmt: { value: 0 },
-    uSweepY: { value: -3 },
-    uSweepAmt: { value: 0 },
-    uBaseGlow: { value: 0 },
-    uSwirlSeed: { value: 0 },
-    uPulse: { value: 0 },
-    // 极光：沿轮廓流动的彩色辉光。强度与颜色由色彩方向和事件决定
-    uAurora: { value: 0 },
-    uAurCols: { value: ['#3FA9FF', '#8D5BFF', '#FF5EB8', '#FF9F43'].map((c) => new THREE.Color(c)) },
-    uAurTime: { value: 0 },
     // Apple Intelligence 式光谱：每一类事的方位、色调、分量；成熟度；流动；事件时的亮度
-    uSpec: { value: 0 },
     uSpecN: { value: 0 },
     uCatAz: { value: new Float32Array(8) },
     uCatLab: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) }, // OKLab
@@ -101,37 +75,46 @@ export function nacreShared() {
     uStudioSky: { value: new THREE.Color(0.92, 0.92, 0.95) },
     uStudioFloor: { value: new THREE.Color(0.72, 0.72, 0.77) },
     uStudioKey: { value: new THREE.Color(2.4, 2.4, 2.45) },
-    // 刻面的明暗（基础、增益）；朝光的面提亮；全息偏色；高光；主光
+    // 跟着主光与头顶的明暗（基础、增益）；朝光的面提亮；全息偏色；抛光；主光
     uFacetK: { value: new THREE.Vector2(0.82, 0.3) },
     uLit: { value: 0 }, // 朝光的面提亮多少（像光透过来）
     uIri: { value: 0 }, // 色相随角度偏多少（弧度）：全息
-    uGloss: { value: 0 }, // 光泽：对上主光的面上一块柔亮
+    uGloss: { value: 0 }, // 抛光：柔光箱与头顶的光映在表面上的强度
     uGlowKey: { value: new THREE.Vector3(-0.52, 0.6, 0.6).normalize() }, // 主光（世界坐标，跟着指针）
     uChromaGain: { value: 1 },
     uChromaCap: { value: 0.16 },
     uDeep: { value: 0 }, // 颜色的深浅
+    uTrans: { value: new THREE.Vector3(0.8, 0.35, 0.35) }, // 透光：映出地面时暗到多少、看见灯时亮多少、朗伯明暗占多少
+    uView: { value: 0.7 }, // 侧过去的面暗到多少
+    uSheen: { value: new THREE.Vector3(0.28, 0.5, 0.72) }, // 头顶的光：强度，地平线的下沿、上沿
+    uRim: { value: 0.15 }, // 轮廓内侧一圈深多少
+    uClear: { value: 1.4 }, // 两种颜色相冲时，中间清透的一段亮多少
+    uLum: { value: 1 }, // 整体的亮度：呼吸、打盹、事件
   };
 }
 
-// 光谱的颜色场。颜色挂在晶体自己身上（跟着它转），每一类事的颜色在它的那个角；
+// 光谱的颜色场。颜色挂在晶体自己身上（跟着它转），每一类事的颜色在它长出来的那一侧；
 // 两个尖各有一种颜色（上尖清亮的薄荷、下尖兰紫）。
 // 混色在 OKLab（感知均匀的颜色空间）里做：亮度过渡均匀，不会有一道比两边都亮的黄，也不会突然跳色。
 //
-// 材质是“极光水晶”：只有一层，五彩极光就在表面上
-//   极光       每个面以它中间一段方位的颜色为主，纵向往尖的颜色渐变：一个面是一段简洁的线性渐变，面与面各有主色；
-//              色相随角度偏一点（全息），每个面偏得不一样
-//   刻面       朝向主光和头顶的面亮而透，背光的面颜色深；棱不画线，两个面的明暗与颜色不一样，棱自己就出来了
-//   高光       平的面反射柔光箱，边界是直的，转动时一条直的明暗边界扫过刻面；面上映出头顶的一段天光；掠射处按菲涅耳反射摄影棚
+// 材质是“极光水晶”：只有一层，五彩极光就在表面上。形状是圆润的菱形（见 core/growth.js · SOFT），所以光也是顺着曲面走的
+//   极光       颜色顺着方位与高度流过整颗晶体，跨过圆润的棱是连续的；往尖走，颜色沿色相环转向尖的颜色；
+//              两种颜色几乎相对时，中间是一段清透的晶体（亮、淡，像紫黄晶、西瓜碧玺的色带之间），不走灰
+//   晶莹       正对你的面透亮，侧过去的面颜色深而浓（看宝石时就是这样：明暗跟着视线，不跟着灯）；
+//              视线折进晶体、从背面出来，看见身后倒过来的摄影棚：上半映出地面、深一点，下半映出天光、亮一点
+//   抛光       头顶的光映在朝上的面上，下沿是一条清楚的地平线；柔光箱在曲面上是一块跟着转动走的亮；
+//              轮廓内侧一圈稍深（光在里面全反射），掠射处按菲涅耳反射摄影棚
 //   没有光晕   所有的光都在轮廓以内
 export const SPECTRAL_GLSL = /* glsl */ `
 #define DBB_MAXC 8
-uniform float uSpec; uniform float uSpecN; uniform float uCatAz[DBB_MAXC]; uniform vec3 uCatLab[DBB_MAXC]; uniform float uCatW[DBB_MAXC];
+uniform float uSpecN; uniform float uCatAz[DBB_MAXC]; uniform vec3 uCatLab[DBB_MAXC]; uniform float uCatW[DBB_MAXC];
 uniform float uSpecMature; uniform float uSpecTime; uniform float uSpecBoost;
 uniform vec3 uSpecTop; uniform vec3 uSpecBottom; uniform float uSpecDark;
 uniform float uGlaze; uniform float uMirrorY; uniform vec2 uPointer;
 uniform vec3 uStudioSky; uniform vec3 uStudioFloor; uniform vec3 uStudioKey;
 uniform vec2 uFacetK; uniform float uLit; uniform float uIri; uniform float uGloss;
 uniform float uChromaGain; uniform float uChromaCap; uniform float uDeep;
+uniform vec3 uTrans; uniform float uView; uniform vec3 uSheen; uniform float uRim; uniform float uClear; uniform float uLum;
 vec3 dbbOklabToLinear(vec3 c) {
   float l_ = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
   float m_ = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
@@ -173,35 +156,38 @@ vec3 dbbField(float phi, float y) {
   U += vec2(0.26, -0.97) * 0.5 * (1.0 - smoothstep(0.15, 0.6, coh));
   coh = length(U);
   vec2 abE = mix(AB, U / max(coh, 1e-4) * Cs, smoothstep(0.35, 0.8, coh));
-  // 再往两个尖的颜色过渡：份额只看高度（平的面上交界是平直的横线），在色相环上走，彩度不掉，不经过一团灰。
-  // 每个尖的路线是定的，不跨过一个“切点”：上尖薄荷——金黄走绿，珊瑚、玫红走紫、蓝（切点在琥珀那个角）；
-  // 下尖兰紫——金黄、琥珀、珊瑚走粉，青、蓝走蓝紫（切点在绿那个角）。每个面只取它中间一段方位的颜色，
-  // 角上的色相不会出现在面上，切点就落在面与面之间；万一落到面上，两条路柔和地混在一起，没有硬接缝
+  // 再往两个尖的颜色过渡：份额只看高度。色相相近的，在色相环上走最短的一段，彩度不掉（青走蓝紫到下尖，金黄走绿到上尖）；
+  // 几乎相对的两种颜色，中间是一段清透的晶体：亮、淡，不经过一团灰（像紫黄晶的紫与黄之间）。
+  // 两条路按色相差柔和地换过去，没有一个固定的“切点”，所以整颗晶体上哪里都没有接缝
   float pt = smoothstep(0.25, 0.95, y), pb = smoothstep(0.25, 0.95, -y);
-  bool top = pt >= pb;
-  vec3 P = top ? uSpecTop : uSpecBottom;
+  vec3 P = pt >= pb ? uSpecTop : uSpecBottom;
   float tp = max(pt, pb);
-  float hE = atan(abE.y, abE.x), hP = atan(P.z, P.y);
-  float cut = radians(top ? 70.0 : 160.0);
-  float dPos = mod(hP - hE, 6.2831853);
-  bool cross = mod(cut - hE, 6.2831853) < dPos;
-  float d1 = cross ? dPos - 6.2831853 : dPos, d2 = cross ? dPos : dPos - 6.2831853;
-  float nearCut = 1.0 - smoothstep(0.0, 0.3, abs(atan(sin(hE - cut), cos(hE - cut))));
-  vec2 hv = mix(vec2(cos(hE + d1 * tp), sin(hE + d1 * tp)), vec2(cos(hE + d2 * tp), sin(hE + d2 * tp)), 0.5 * nearCut);
-  float C = mix(length(abE), length(P.yz), tp) * length(hv);
-  Ls = mix(Ls, P.x, tp);
-  vec2 h = normalize(hv + vec2(1e-5, 0.0));
-  // 琥珀和绿之间那一段黄绿：色相往暖黄那边挪（金黄，不是荧光的黄绿），彩度收一点
+  float Ce = length(abE), Cp = length(P.yz);
+  float hE = atan(abE.y, abE.x);
+  float dh = atan(P.z, P.y) - hE;
+  dh = atan(sin(dh), cos(dh));
+  float ha = hE + dh * tp;
+  float Ca = mix(Ce, Cp, tp);
+  float La = mix(Ls, P.x, tp);
+  vec3 arc = vec3(La, Ca * cos(ha), Ca * sin(ha));
+  vec2 ab = mix(abE, P.yz, tp);
+  vec3 clr = vec3(La + max(Ca - length(ab), 0.0) * uClear, ab);
+  vec3 res = mix(arc, clr, smoothstep(0.62 * 3.14159, 0.95 * 3.14159, abs(dh)));
+  Ls = res.x;
+  float C = length(res.yz);
+  vec2 h = C > 1e-5 ? res.yz / C : vec2(1.0, 0.0);
+  // 琥珀和绿之间那一段黄绿：色相往金黄那边挪（不是荧光的黄绿，也不是橄榄），彩度收一点、亮一点
   float hd = degrees(atan(h.y, h.x));
   float lime = exp(-pow((hd - 122.0) / 16.0, 2.0));
-  float warp = radians(-16.0 * lime);
+  float warp = radians(-26.0 * lime);
   h = vec2(h.x * cos(warp) - h.y * sin(warp), h.x * sin(warp) + h.y * cos(warp));
   C *= 1.0 - 0.1 * lime;
+  Ls += 0.05 * lime;
   return vec3(Ls, h * C);
 }
-// 表面的光泽：摄影棚，边界清楚——左上的柔光箱（跟着指针）、右侧一条窄灯带、头顶一盏灯。
-// 平的刻面反射的是一整片，正好对上灯的那个面整面亮一下，转一下就换一个面
-vec3 dbbStudioSharp(vec3 r) {
+// 摄影棚：左上的柔光箱（跟着指针）、右侧一条窄灯带、头顶一盏灯。曲面上一块清楚的方形会被拉成奇怪的形状，
+// 所以灯的边缘是柔的：映在圆润的晶体上，是一片顺着曲面走的亮，而不是一面贴上去的旗子
+vec3 dbbStudio(vec3 r) {
   vec3 c = mix(uStudioFloor, uStudioSky, smoothstep(-0.3, 0.5, r.y));
   vec3 up = vec3(0.0, 1.0, 0.0);
   vec3 kd = normalize(vec3(-0.52 + 0.3 * uPointer.x, 0.6 + 0.2 * uPointer.y, 0.6));
@@ -211,7 +197,7 @@ vec3 dbbStudioSharp(vec3 r) {
     vec3 kv = cross(kd, ku);
     vec2 q = vec2(dot(r, ku), dot(r, kv)) / max(dk, 0.2);
     float sd = length(max(abs(q) - vec2(0.32, 0.2), 0.0)) - 0.06;
-    c += uStudioKey * (1.0 - smoothstep(-0.02, 0.03, sd));
+    c += uStudioKey * (1.0 - smoothstep(-0.12, 0.16, sd));
   }
   vec3 sdir = normalize(vec3(0.95, 0.2, 0.25));
   float ds = dot(r, sdir);
@@ -220,9 +206,9 @@ vec3 dbbStudioSharp(vec3 r) {
     vec3 sv = cross(sdir, su);
     vec2 q2 = vec2(dot(r, su), dot(r, sv)) / max(ds, 0.2);
     float sd2 = length(max(abs(q2) - vec2(0.05, 0.7), 0.0)) - 0.02;
-    c += uStudioKey * 0.75 * (1.0 - smoothstep(-0.01, 0.025, sd2));
+    c += uStudioKey * 0.75 * (1.0 - smoothstep(-0.06, 0.1, sd2));
   }
-  c += uStudioKey * 0.4 * smoothstep(0.94, 0.975, r.y);
+  c += uStudioKey * 0.4 * smoothstep(0.86, 0.98, r.y);
   return c;
 }
 // 颜色落到屏幕上：OKLab → 线性 RGB；超出屏幕色域的颜色往同样亮度的灰收一点，不去截断某一个通道（截断会偏色）
@@ -242,14 +228,12 @@ vec3 dbbGlass(vec3 local, vec3 viewL, vec3 normL, vec3 keyL, vec3 nW, vec3 vW) {
   if (dot(N, V) < 0.0) N = -N;
   float r = max(length(local), 1e-4);
   float f = clamp(dot(N, V), 0.0, 1.0); // 这个面正对你的程度
-  // 高度：按这个面自己的尖来量（尖在轴上，尖的高度 = 平面到中心的距离 / 法线的 y），平的面上是线性的
+  // 高度：切面和竖轴的交点就是这个面的尖（平的地方，尖的高度 = 平面到中心的距离 / 法线的 y），在面上是线性的；
+  // 到了圆润的棱和尖，切面跟着转，高度也连续地变过去
   float hA = dot(N, local) / (abs(N.y) > 1e-4 ? N.y : 1e-4);
   float y = clamp(local.y / max(abs(hA), 1e-4), -1.0, 1.0);
-  // ① 极光就在表面上。每个面以它正中方位的颜色为主（只带一半朝两个角的变化），纵向往尖的颜色渐变：
-  // 一个面是一段简洁的线性渐变，面与面各有主色——切出来的宝石是这样的，不是一整块喷绘
-  float phiF = atan(N.z, N.x);
-  float dphi = atan(local.z, local.x) - phiF;
-  vec3 lab = dbbField(phiF + 0.5 * atan(sin(dphi), cos(dphi)), y);
+  // ① 极光就在表面上：颜色只看方位和高度，顺着曲面流过圆润的棱
+  vec3 lab = dbbField(atan(local.z, local.x), y);
   float L = lab.x;
   float C = length(lab.yz);
   vec2 h = C > 1e-5 ? lab.yz / C : vec2(1.0, 0.0);
@@ -261,74 +245,64 @@ vec3 dbbGlass(vec3 local, vec3 viewL, vec3 normL, vec3 keyL, vec3 nW, vec3 vW) {
   // 诞生时很淡：颜色都在，都很浅；经历让颜色变浓
   C *= mix(0.4, 1.0, uSpecMature);
   L = mix(0.93, L, mix(0.45, 1.0, uSpecMature));
-  // 全息：色相随角度轻轻偏一点，每个面偏得不一样，转动时颜色在面上流过
+  // 全息：色相随角度轻轻偏一点，越侧过去偏得越多，转动时颜色在曲面上流过
   float ang = (1.0 - f) * uIri;
   h = vec2(h.x * cos(ang) - h.y * sin(ang), h.x * sin(ang) + h.y * cos(ang));
   vec3 base = dbbVivid(L, h * C);
-  // ② 刻面：朝向主光（左上方，跟着指针）和头顶的面亮而透——朝同一个色相提亮，不发灰；背光的面颜色深。
-  // 棱不画线：两个面的明暗与颜色不一样，棱自己就出来了
+  // ② 晶莹：明暗主要跟着视线走（宝石是这样的），只留一点跟着主光（左上方，跟着指针）
   vec3 nWm = normalize(vec3(nW.x, nW.y * uMirrorY, nW.z));
   vec3 vWm = normalize(vec3(vW.x, vW.y * uMirrorY, vW.z));
   vec3 kL = normalize(keyL);
   float Kk = dot(N, kL) * 0.5 + 0.5;
   float Kt = nWm.y * 0.5 + 0.5;
-  // 明暗在感知亮度上做：暗的面只降亮度、彩度留着，是浓郁的宝石色，不发灰；黄色在暗处往琥珀橙偏（暗处更暖），不发橄榄
-  float shade = mix(uFacetK.x + uFacetK.y * (0.7 * Kk + 0.3 * Kt), 1.0, 0.3 * yl);
+  // 透光：视线从表面折进晶体，从背面出来时朝轴弯（凸的晶体就是一片透镜，折射率 1.5），看见身后倒过来的摄影棚：
+  // 映出地面的地方深一点，映出天光的地方亮一点，正好透过来一盏灯的地方，朝同一个色相亮起来——光在晶体里面
+  vec3 wv = -vWm;
+  float ti = acos(clamp(dot(nWm, vWm), 0.0, 1.0));
+  float dev = 2.0 * (ti - asin(sin(ti) / 1.5));
+  vec3 nt = nWm - dot(nWm, wv) * wv;
+  float lt = length(nt);
+  vec3 wo = lt > 1e-4 ? normalize(cos(dev) * wv - sin(dev) * nt / lt) : wv;
+  const vec3 LUM = vec3(0.2126, 0.7152, 0.0722);
+  float bT = dot(dbbStudio(wo), LUM);
+  float skyL = dot(uStudioSky, LUM), floorL = dot(uStudioFloor, LUM);
+  float tau = smoothstep(floorL, skyL, bT);
+  float kap = clamp((bT - skyL) / max(dot(uStudioKey, LUM), 1e-3), 0.0, 1.0);
+  float shadeT = mix(uTrans.x, 1.0, tau);
+  float shadeK = uFacetK.x + uFacetK.y * (0.7 * Kk + 0.3 * Kt);
+  float shadeV = mix(uView, 1.0, smoothstep(0.12, 0.9, f));
+  // 明暗在感知亮度上做：暗的地方只降亮度、彩度留着，是浓郁的宝石色，不发灰；黄色在暗处往琥珀橙偏（暗处更暖），不发橄榄
+  float shade = mix(mix(shadeT, shadeK, uTrans.z) * shadeV, 1.0, 0.3 * yl) * uLum;
   float warm = -max(1.0 - shade, 0.0) * yl * 0.9;
   vec2 hw = vec2(h.x * cos(warm) - h.y * sin(warm), h.x * sin(warm) + h.y * cos(warm));
   vec3 col = dbbVivid(L * pow(shade, 1.0 / 3.0), hw * C);
   col = mix(col, dbbVivid(min(L + 0.12, 0.95), h * C * 0.8), smoothstep(0.6, 1.0, Kk) * uLit);
-  // 主光在整颗晶体上的一片光：朝光的一侧亮一点，跨过棱是连续的
+  col = mix(col, dbbVivid(min(L + 0.16, 0.97), h * C * 0.9), kap * uTrans.y);
+  // 主光在整颗晶体上的一片光：朝光的一侧亮一点
   col *= 0.9 + 0.14 * smoothstep(-0.45, 0.95, dot(local / r, kL));
-  // ③ 抛光的平面：柔光箱映在面上，边界是直的。只为算反光把镜头拉近到三分之一（反光方向在面上变化大一些），
-  // 转动时一条直的明暗边界扫过刻面；柔光箱里上亮下暗
-  vec3 camL = local + viewL;
-  vec3 Vr = normalize(camL * 0.33 - local);
-  vec3 Rr = reflect(-Vr, N);
+  // ③ 抛光：柔光箱映在表面上，边界清楚，里面上亮下暗；转动时这块亮从平的面上扫过、沿着圆润的棱滑过去
+  vec3 Rr = reflect(-V, N);
   vec3 ku = normalize(cross(vec3(0.0, 1.0, 0.0), kL));
   vec3 kv = cross(kL, ku);
   float dk = dot(Rr, kL);
   vec2 q = vec2(dot(Rr, ku), dot(Rr, kv)) / max(dk, 0.2);
   float sd = length(max(abs(q) - vec2(0.42, 0.26), 0.0)) - 0.05;
-  float box = (1.0 - smoothstep(-0.006, 0.01, sd)) * step(0.0, dk);
-  col = mix(col, mix(base, vec3(1.0), 0.85), box * (0.26 + 0.22 * smoothstep(0.25, -0.25, q.y)) * uGloss);
-  // 天光：每个面映出头顶的一段亮，是一段平直的渐变（面越朝上、越靠上越亮）——抛光玻璃的光泽
-  col = mix(col, mix(base, vec3(1.0), 0.6), smoothstep(0.3, 0.95, Rr.y) * 0.16 * uGloss);
-  // 掠射处按菲涅耳反射摄影棚（真实的视线）：侧过去的面像镜子一样带一点天光
+  float box = (1.0 - smoothstep(-0.05, 0.06, sd)) * step(0.0, dk);
+  col = mix(col, mix(base, vec3(1.0), 0.85), box * (0.2 + 0.16 * smoothstep(0.25, -0.25, q.y)) * uGloss);
+  // 头顶的光：朝上的面映出一片亮，下沿是一条清楚的地平线（落在圆润的赤道上）——抛光玻璃最明白的样子
+  col = mix(col, mix(base, vec3(1.0), 0.6), smoothstep(uSheen.y, uSheen.z, Rr.y) * uSheen.x * uGloss);
+  // 轮廓内侧一圈稍深：光在晶体里全反射，边缘有了厚度
+  col *= 1.0 - uRim * smoothstep(0.04, 0.16, f) * (1.0 - smoothstep(0.16, 0.42, f));
+  // 掠射处按菲涅耳反射摄影棚（真实的视线）：侧过去的地方像镜子一样带一点天光
   float cv = clamp(dot(nWm, vWm), 0.0, 1.0);
   float F = (0.04 + 0.96 * pow(1.0 - cv, 5.0)) * uGlaze;
-  return col * (1.0 - F) + dbbStudioSharp(reflect(-vWm, nWm)) * F;
+  return col * (1.0 - F) + dbbStudio(reflect(-vWm, nWm)) * F;
 }
 `;
 
-// 四个颜色首尾相接的循环渐变（极光的颜色带）
-export const AURORA_GLSL = /* glsl */ `
-uniform vec3 uAurCols[4];
-vec3 dbbAurora(float f) {
-  f = fract(f) * 4.0;
-  float i = floor(f);
-  float t = smoothstep(0.0, 1.0, fract(f));
-  vec3 a = i < 1.0 ? uAurCols[0] : i < 2.0 ? uAurCols[1] : i < 3.0 ? uAurCols[2] : uAurCols[3];
-  vec3 b = i < 1.0 ? uAurCols[1] : i < 2.0 ? uAurCols[2] : i < 3.0 ? uAurCols[3] : uAurCols[0];
-  return mix(a, b, t);
-}
-`;
-
-// 珍珠母：物理材质 + 虹彩厚度随表面缓慢起伏（每颗的纹路都不一样）
-export function createNacre({
-  shared,
-  roughness = 0.26,
-  metalness = 0.12,
-  iridescence = 1,
-  irRange = [220, 620],
-  clearcoat = 1,
-  sheen = 0.6,
-  sheenColor = '#E3D6F6',
-  envMapIntensity = 0.95,
-  dissolve = false,
-  fade = false,
-  tint = false,
-} = {}) {
+// 晶体的材质：颜色全在着色器里算（光谱 + 玻璃，见 SPECTRAL_GLSL），物理材质只是载体，留最基本的一层。
+// dissolve：剥层时从剖面那道边化开；fade：倒影越往下越淡；tint：倒影蒙一层薄薄的底色；shadow：倒影稍微糙一点、暗一点
+export function createCrystal({ shared, dissolve = false, fade = false, tint = false, shadow = false } = {}) {
   const own = {
     uDissolve: { value: 0 },
     uDisR: { value: 1.5 },
@@ -336,34 +310,26 @@ export function createNacre({
     uFadeTop: { value: -0.1 },
     uFadeBottom: { value: -3 },
     uAlpha: { value: 1 },
-    uTint: { value: new THREE.Color('#bfe9da') },
+    uTint: { value: new THREE.Color('#ffffff') },
     uTintAmt: { value: 0 },
     uGrow: { value: 0 },
-    uGrowColor: { value: new THREE.Color('#bff0dc') },
+    uGrowColor: { value: new THREE.Color('#ffffff') },
   };
   const m = new THREE.MeshPhysicalMaterial({
     color: 0xffffff,
-    vertexColors: true,
-    roughness,
-    metalness,
-    clearcoat,
-    clearcoatRoughness: 0.1,
-    iridescence,
-    iridescenceIOR: 1.32,
-    iridescenceThicknessRange: irRange,
-    sheen,
-    sheenColor: new THREE.Color(sheenColor),
-    sheenRoughness: 0.42,
-    envMapIntensity,
+    roughness: 0.3 + (shadow ? 0.08 : 0),
+    metalness: 0,
+    envMapIntensity: shadow ? 0.16 : 0.2,
     transparent: fade,
   });
+  // 光谱是算好的颜色，不再经过色调映射：画出来的就是设计的那个颜色
+  m.toneMapped = false;
   m.userData.own = own;
   m.userData.shared = shared;
   const defs = [dissolve ? '#define DBB_DISSOLVE' : '', fade ? '#define DBB_FADE' : '', tint ? '#define DBB_TINT' : ''].join('\n');
   m.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, shared, own);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <morphcolor_vertex>', MORPHCOLOR_FIX)
       .replace('#include <common>', '#include <common>\nvarying vec3 vDbbLocal;\nvarying vec3 vDbbWorld;\nvarying vec3 vDbbViewL;\nvarying vec3 vDbbNormalL;\nvarying vec3 vDbbKeyL;\nuniform vec3 uGlowKey;')
       .replace('#include <project_vertex>', '#include <project_vertex>\nvDbbLocal = transformed;\nvDbbWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nmat4 dbbInv = inverse(modelMatrix);\nvDbbViewL = (dbbInv * vec4(cameraPosition, 1.0)).xyz - transformed;\nvDbbNormalL = objectNormal;\nvDbbKeyL = (dbbInv * vec4(uGlowKey, 0.0)).xyz;');
     shader.fragmentShader = shader.fragmentShader
@@ -376,22 +342,16 @@ varying vec3 vDbbWorld;
 varying vec3 vDbbViewL;
 varying vec3 vDbbNormalL;
 varying vec3 vDbbKeyL;
-uniform float uGlow; uniform vec3 uGlowColor; uniform vec3 uWarmPos; uniform float uWarmAmt;
-uniform float uSweepY; uniform float uSweepAmt; uniform float uBaseGlow; uniform float uSwirlSeed; uniform float uPulse;
+uniform vec3 uWarmPos; uniform float uWarmAmt;
 uniform float uDissolve; uniform float uDisR; uniform vec3 uEdgeColor; uniform float uFadeTop; uniform float uFadeBottom; uniform float uAlpha;
 uniform vec3 uTint; uniform float uTintAmt; uniform float uGrow; uniform vec3 uGrowColor;
-uniform float uAurora; uniform float uAurTime;
 ${NOISE_GLSL}
-${AURORA_GLSL}
 ${SPECTRAL_GLSL}`,
       )
       .replace(
         '#include <clipping_planes_fragment>',
         `#include <clipping_planes_fragment>
 float dbbEdge = 0.0;
-vec3 dbbAurCol = vec3(0.0);
-float dbbAurAmt = 0.0;
-vec3 dbbFx = vec3(0.0);
 #ifdef DBB_DISSOLVE
   if (uDissolve > 0.0) {
     // 从剖面那道边开始化开，像把一层轻轻揭下来
@@ -404,69 +364,28 @@ vec3 dbbFx = vec3(0.0);
 #endif`,
       )
       .replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
-#ifdef DBB_TINT
-  diffuseColor.rgb = mix(diffuseColor.rgb, uTint, uTintAmt);
-#endif`,
-      )
-      .replace(
-        '#include <emissivemap_fragment>',
-        `#include <emissivemap_fragment>
-{
-  vec3 nV = normalize(normal);
-  vec3 vV = normalize(vViewPosition);
-  float rim = pow(1.0 - clamp(dot(nV, vV), 0.0, 1.0), 2.4);
-  dbbFx += uGlowColor * (uGlow * (0.22 + 0.78 * rim) + uBaseGlow * (0.4 + rim));
-  float dw = distance(vDbbLocal, uWarmPos);
-  dbbFx += vec3(1.0, 0.78, 0.62) * uWarmAmt * exp(-dw * dw / 0.1) * 0.5;
-  float band = exp(-pow((vDbbLocal.y - uSweepY) / 0.16, 2.0));
-  dbbFx += vec3(0.93, 0.91, 1.0) * uSweepAmt * band * (0.25 + 0.75 * rim) * 0.55;
-  dbbFx += uGlowColor * uPulse * (0.35 + 0.65 * rim) * 0.5;
-  dbbFx += uGrowColor * uGrow * (0.45 + 0.55 * rim);
-  dbbFx += uEdgeColor * dbbEdge * 2.2;
-  if (uAurora > 0.001) {
-    // 沿轮廓流动：角度决定颜色，缓慢转动，再加一点噪声让它像光幕而不是色环
-    float ang = atan(nV.y, nV.x) / 6.28318;
-    float flow = ang + uAurTime * 0.05 + dbb_snoise(vec3(vDbbLocal.xy * 1.3, uAurTime * 0.12)) * 0.16;
-    dbbAurCol = dbbAurora(flow);
-    float band = pow(rim, 1.3);
-    dbbFx += dbbAurCol * uAurora * (band * 1.7 + 0.1);
-    // 浅色背景上光是加不出来的：同时把轮廓染上极光的颜色
-    dbbAurAmt = clamp(uAurora * band * 1.1, 0.0, 0.8);
-  }
-  totalEmissiveRadiance += dbbFx;
-}`,
-      )
-      .replace(
-        '#include <lights_physical_fragment>',
-        `#include <lights_physical_fragment>
-#ifdef USE_IRIDESCENCE
-  {
-    float sw = dbb_snoise(vDbbLocal * 1.35 + vec3(uSwirlSeed, 0.0, -uSwirlSeed)) * 0.5 + 0.5;
-    float sw2 = dbb_snoise(vDbbLocal * 3.1 + 17.0) * 0.5 + 0.5;
-    material.iridescenceThickness = mix(iridescenceThicknessMinimum, iridescenceThicknessMaximum, clamp(sw * 0.8 + sw2 * 0.2, 0.0, 1.0));
-  }
-#endif`,
-      )
-      .replace(
         '#include <opaque_fragment>',
         `#ifdef DBB_FADE
   diffuseColor.a *= uAlpha * smoothstep(uFadeBottom, uFadeTop, vDbbWorld.y);
 #endif
-outgoingLight = mix(outgoingLight, dbbAurCol * 1.05, dbbAurAmt);
-if (uSpec > 0.001) {
+{
   vec3 nS = normalize(normal);
   vec3 sc = dbbGlass(vDbbLocal, vDbbViewL, vDbbNormalL, vDbbKeyL, inverseTransformDirection(nS, viewMatrix), normalize(cameraPosition - vDbbWorld));
 #ifdef DBB_TINT
   sc = mix(sc, uTint, uTintAmt);
 #endif
-  outgoingLight = mix(outgoingLight, sc + dbbFx, uSpec);
+  // 按住的地方一点暖色；新的一层长成时一阵同色的光；剥层时化开的那道边
+  float rim = pow(1.0 - clamp(dot(nS, normalize(vViewPosition)), 0.0, 1.0), 2.4);
+  float dw = distance(vDbbLocal, uWarmPos);
+  sc += vec3(1.0, 0.78, 0.62) * uWarmAmt * exp(-dw * dw / 0.1) * 0.5;
+  sc += uGrowColor * uGrow * (0.45 + 0.55 * rim);
+  sc += uEdgeColor * dbbEdge * 2.2;
+  outgoingLight = sc;
 }
 #include <opaque_fragment>`,
       );
   };
-  m.customProgramCacheKey = () => `dbb-nacre-${dissolve ? 'd' : ''}${fade ? 'f' : ''}${tint ? 't' : ''}`;
+  m.customProgramCacheKey = () => `dbb-crystal-${dissolve ? 'd' : ''}${fade ? 'f' : ''}${tint ? 't' : ''}`;
   return m;
 }
 
@@ -772,10 +691,8 @@ uniform float uAmt;
 uniform float uTime;
 uniform float uRise;
 uniform vec3 uColor;
-uniform float uAurMix;
 varying vec2 vUv;
 ${NOISE_GLSL}
-${AURORA_GLSL}
 void main() {
   float x = (vUv.x - 0.5) * 2.0;
   float y = vUv.y;
@@ -784,13 +701,8 @@ void main() {
   float head = 1.0 - smoothstep(uRise - 0.1, uRise + 0.02, y);
   float ends = smoothstep(0.0, 0.08, y) * (1.0 - smoothstep(0.82, 1.0, y) * 0.6);
   float streak = 0.8 + 0.2 * dbb_snoise(vec3(x * 3.0, y * 4.0 - uTime * 1.4, uTime * 0.25));
-  // 极光幕：竖直的光褶，颜色沿横向和高度缓慢流动
-  float fold = 0.55 + 0.45 * dbb_snoise(vec3(x * 7.0, y * 1.2 - uTime * 0.5, uTime * 0.15));
-  float curtain = exp(-x * x / 0.6) * fold;
-  vec3 col = mix(uColor, dbbAurora(vUv.x * 0.7 + y * 0.35 + uTime * 0.06), uAurMix);
-  float body = mix(core + halo, curtain + core * 0.5, uAurMix);
-  float a = uAmt * body * head * ends * streak;
-  gl_FragColor = vec4(col, clamp(a, 0.0, 0.85));
+  float a = uAmt * (core + halo) * head * ends * streak;
+  gl_FragColor = vec4(uColor, clamp(a, 0.0, 0.85));
   #include <colorspace_fragment>
 }`;
 
@@ -804,8 +716,6 @@ export function createColumnMaterial() {
       uTime: { value: 0 },
       uRise: { value: 0 },
       uColor: { value: new THREE.Color('#F4FFFA') },
-      uAurMix: { value: 0 },
-      uAurCols: { value: ['#3FA9FF', '#8D5BFF', '#FF5EB8', '#FF9F43'].map((c) => new THREE.Color(c)) },
     },
     vertexShader: COLUMN_VS,
     fragmentShader: COLUMN_FS,

@@ -21,7 +21,7 @@ const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--ena
 const cases = [
   { page: 'index.html', size: [1440, 900], scheme: 'light', steps: ['#seal', '#resolve', '#dig', '#lens'] },
   { page: 'index.html', size: [390, 844], scheme: 'dark', steps: ['#inherit'] },
-  { page: 'lab.html', size: [1440, 900], scheme: 'light', clicks: ['seal', 'yes', 'iterate', 'burst'], looks: ['lit', 'expanse', 'apple'] },
+  { page: 'lab.html', size: [1440, 900], scheme: 'light', clicks: ['seal', 'yes', 'iterate', 'burst'], dig: true },
 ];
 let failed = 0;
 for (const c of cases) {
@@ -50,11 +50,13 @@ for (const c of cases) {
     await page.evaluate(() => window.__dbb.stage.advance(2.5));
     await page.screenshot({ path: path.join(out, `${tag}-${i + 1}.png`) });
   }
-  for (const [i, look] of (c.looks ?? []).entries()) {
-    await page.click(`#looks [data-look="${look}"]`);
+  if (c.dig) {
+    // 剖开、剥到最深，再合上：圆润的环带、化开的层、剖面的轮廓都走一遍
     await page.evaluate(() => { window.__dbb.stage.setDepth(1); return window.__dbb.stage.advance(2.5); });
-    await page.screenshot({ path: path.join(out, `${tag}-look-${look}.png`) });
-    await page.evaluate(() => { window.__dbb.stage.setDepth(0); return window.__dbb.stage.advance(1); });
+    await page.screenshot({ path: path.join(out, `${tag}-section.png`) });
+    await page.evaluate(() => { window.__dbb.stage.setDepth(window.__dbb.stage.N); return window.__dbb.stage.advance(3); });
+    await page.screenshot({ path: path.join(out, `${tag}-core.png`) });
+    await page.evaluate(() => { window.__dbb.stage.setDepth(0); return window.__dbb.stage.advance(2); });
   }
   const state = await page.evaluate(() => ({ layers: window.__dbb.store.view.layers.length, events: window.__dbb.store.ledger.events.length }));
   console.log(`${errors.length ? '✗' : '✓'} ${tag}  代数 ${state.layers} · 账本 ${state.events} 行${errors.length ? `\n  ${errors.join('\n  ')}` : ''}`);

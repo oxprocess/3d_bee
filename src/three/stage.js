@@ -9,12 +9,12 @@
 // 在剖面上点一圈，镜头推近那一代；再点，选中其中一条细纹——那一次真实的比较。
 import * as THREE from 'three';
 import { RULE } from '../core/growth.js';
-import { hexToRgb, vivid, muted, mixHex, oklabOf } from '../core/color.js';
-import { setTone, tone, layerTone } from '../core/tone.js';
-import { createNacre, nacreShared, createCapMaterial, MAX_LAYERS, MAX_LAMELLAE } from './materials.js';
+import { hexToRgb, mixHex, oklabOf } from '../core/color.js';
+import { tone, layerTone } from '../core/tone.js';
+import { createCrystal, crystalShared, createCapMaterial, MAX_LAYERS, MAX_LAMELLAE } from './materials.js';
 import { shapeField, surfaceGeometry, capGeometry, outlineGeometry, radiusAt, extents } from './geometry.js';
 import { buildEnvironment } from './env.js';
-import { readPalette, watchTheme, reducedMotion, LOOKS } from './palette.js';
+import { readPalette, watchTheme, reducedMotion, LOOK } from './palette.js';
 import { Animator, Orientation, damp, dampVec3, ease } from './motion.js';
 import { Water } from './water.js';
 import { Droplets, LightColumn } from './effects.js';
@@ -34,10 +34,7 @@ export class PearlStage extends EventTarget {
     this.host = host;
     this.opts = { interactive: true, wheelDigs: false, haptics: true, captions: true, labels: true, ...opts };
     this.reduce = reducedMotion();
-    this.lookId = LOOKS[opts.look] ? opts.look : 'apple';
-    setTone(this.lookId);
     host.classList.add('dbb-stage');
-    host.dataset.look = this.lookId;
     if (!host.hasAttribute('tabindex')) host.tabIndex = 0;
     host.setAttribute('role', 'group');
     host.setAttribute('aria-roledescription', '可转动的 3D 晶体');
@@ -63,8 +60,8 @@ export class PearlStage extends EventTarget {
     this.scene.add(this.anchor);
     this.anchor.add(this.orient);
     this.orient.add(this.scaleG);
-    this.shared = nacreShared();
-    this.proxyMat = createNacre({ shared: this.shared });
+    this.shared = crystalShared();
+    this.proxyMat = createCrystal({ shared: this.shared });
     this.proxy = new THREE.Mesh(new THREE.BufferGeometry(), this.proxyMat);
     this.proxy.name = 'pearl';
     this.scaleG.add(this.proxy);
@@ -79,8 +76,8 @@ export class PearlStage extends EventTarget {
     this.mirror.add(this.sAnchor);
     this.sAnchor.add(this.sOrient);
     this.sOrient.add(this.sScale);
-    this.sShared = nacreShared();
-    this.shadowMat = createNacre({ shared: this.sShared, fade: true, tint: true, irRange: [260, 660], roughness: 0.34, sheenColor: '#CFF1E6', envMapIntensity: 0.78 });
+    this.sShared = crystalShared();
+    this.shadowMat = createCrystal({ shared: this.sShared, fade: true, tint: true, shadow: true });
     // 倒影里看到的是晶体的底面：环境光按镜像取样，底面照到的是水和身下的光，而不是天空
     this.shadowMat.envMapRotation.set(Math.PI, 0, 0);
     this.shadowMesh = new THREE.Mesh(new THREE.BufferGeometry(), this.shadowMat);
@@ -96,28 +93,9 @@ export class PearlStage extends EventTarget {
     this.scene.add(this.droplets.group);
     this.column = new LightColumn();
     this.scene.add(this.column.group);
-    this.aur = { body: 0, shadow: 0, flashBody: 0, flashShadow: 0 };
     // 光谱（Apple Intelligence 式）：每一类事的分量、成熟度，缓慢流动的相位，事件时的流速与浓度
     const specState = () => ({ w: new Float32Array(8), wT: new Float32Array(8), mature: 0, matureT: 0, phase: 0, flow: 0, boost: 0 });
     this.spec = { body: specState(), shadow: specState() };
-    // 太阳：只有 The Expanse 式用。太空里只有一个硬光源，照亮一半，另一半落进阴影
-    this.sun = new THREE.DirectionalLight('#FFE3B8', 0);
-    this.sun.position.set(-6, 2.2, 3.2);
-    this.sun.layers.enableAll();
-    this.scene.add(this.sun, this.sun.target);
-    // 仪表（The Expanse 式）：赤道外一圈细细的轨道线和刻度，像飞船上的导航显示
-    this.hud = new THREE.Group();
-    const orbit = [], ticks = [];
-    for (let i = 0; i <= 128; i++) { const a = (i / 128) * Math.PI * 2; orbit.push(new THREE.Vector3(Math.cos(a), 0, Math.sin(a))); }
-    for (let i = 0; i < 36; i++) {
-      const a = (i / 36) * Math.PI * 2, l = i % 9 === 0 ? 0.075 : 0.03;
-      ticks.push(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)), new THREE.Vector3(Math.cos(a) * (1 + l), 0, Math.sin(a) * (1 + l)));
-    }
-    this.hudMat = new THREE.LineBasicMaterial({ color: '#3FC1C9', transparent: true, opacity: 0.5, depthWrite: false });
-    this.hud.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(orbit), this.hudMat));
-    this.hud.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(ticks), this.hudMat));
-    this.hud.visible = false;
-    this.scene.add(this.hud);
 
     this.rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true });
     this.water.material.uniforms.uRefl.value = this.rt.texture;
@@ -170,6 +148,8 @@ export class PearlStage extends EventTarget {
     this.glowShadow = 0;
     this.glowTargets = { body: 0, shadow: 0 };
     this.pressing = false;
+    // 按下去有一点回弹：像碰到一个有弹性的、活的东西（弹簧，稍欠阻尼，回来时轻轻越过一点）
+    this.spring = { x: 1, v: 0, target: 1 };
     this.anchors = new Map();
     this.visible = true;
     this.hinge = { point: new THREE.Vector3(), axis: new THREE.Vector3(1, 0, 0) };
@@ -198,7 +178,7 @@ export class PearlStage extends EventTarget {
   setView(view, { transition = 'none' } = {}) {
     const first = !this.view;
     this.view = view;
-    const F = shapeField(view, { mapColor: (hex, core, L) => this.mapColor(hex, core, L) });
+    const F = shapeField(view);
     this.F = F;
     const N = view.layers.length;
     this.N = N;
@@ -216,8 +196,6 @@ export class PearlStage extends EventTarget {
     this.writeCapData();
     const p = view.pose;
     this.restTilt.setFromAxisAngle(new THREE.Vector3(...p.axis), p.angle);
-    this.shared.uSwirlSeed.value = (hashId(view.id) % 1000) / 100;
-    this.sShared.uSwirlSeed.value = this.shared.uSwirlSeed.value + 3.7;
 
     this.disposeAssembly();
     if (this.depthTarget > 0) {
@@ -232,7 +210,7 @@ export class PearlStage extends EventTarget {
     this.syncDroplets();
     this.updateProbLabels();
     this.updateAria();
-    this.applyLookColors();
+    this.applyColumnColor();
     this.emit('view', { view });
   }
 
@@ -286,7 +264,6 @@ export class PearlStage extends EventTarget {
     const g = geo.clone();
     g.morphAttributes.position = [old.attributes.position.clone()];
     g.morphAttributes.normal = [old.attributes.normal.clone()];
-    if (old.attributes.color) g.morphAttributes.color = [old.attributes.color.clone()];
     g.morphTargetsRelative = false;
     mesh.geometry = g;
     mesh.updateMorphTargets();
@@ -301,19 +278,16 @@ export class PearlStage extends EventTarget {
   updateShadow(view, morph = 0) {
     const F = this.F, N = view.layers.length, s = view.shadow;
     const p = s.mode === 'practice' && F.hasCandidate ? s.progress : 0;
-    const look = this.look;
-    // 倒影的底色：Apple 式只蒙一层很薄的白（水里的东西总是淡一点），练习时再带一点它在练的那类事的颜色
-    const practiceTint = look.spectral ? mixHex('#FFFFFF', tone(s.catColor ?? s.color), 0.35) : look.mute ? mixHex(muted(s.color), look.mirrorTint, 0.55) : s.color;
-    const geo = surfaceGeometry(F, N - 1, 'full', { extra: p, tint: s.mode === 'practice' ? practiceTint : null, tintAmt: 0.25 + 0.35 * p });
+    // 倒影的底色：只蒙一层很薄的白（水里的东西总是淡一点），练习时再带一点它在练的那类事的颜色
+    const practiceTint = mixHex('#FFFFFF', tone(s.catColor ?? s.color), 0.35);
+    const geo = surfaceGeometry(F, N - 1, 'full', { extra: p });
     if (morph > 0 && !this.reduce && this.shadowMesh.geometry.attributes.position?.count === geo.attributes.position.count) this.morphMesh(this.shadowMesh, geo, morph);
     else this.swapGeometry(this.shadowMesh, geo);
     this.targetClarity = s.clarity;
     this.targetAgreement = s.agreement;
     const own = this.shadowMat.userData.own;
-    own.uTint.value.set(s.mode === 'practice' ? practiceTint : look.mirrorTint);
-    own.uTintAmt.value = look.spectral
-      ? (s.mode === 'practice' ? 0.14 + 0.14 * (1 - s.clarity) : 0.08)
-      : (s.mode === 'practice' ? 0.5 + 0.2 * (1 - s.clarity) : 0.22);
+    own.uTint.value.set(s.mode === 'practice' ? practiceTint : LOOK.mirrorTint);
+    own.uTintAmt.value = s.mode === 'practice' ? 0.14 + 0.14 * (1 - s.clarity) : 0.08;
   }
 
   writeCapData() {
@@ -322,9 +296,9 @@ export class PearlStage extends EventTarget {
     data.fill(0);
     this.view.layers.forEach((L, k) => {
       if (k >= MAX_LAYERS) return;
-      // Apple 式：剖面是大片的平面，同样的颜色铺开会比晶体表面显得重，提亮一点
+      // 剖面是大片的平面，同样的颜色铺开会比晶体表面显得重，提亮一点
       const shown = this.mapColor(L.color, L.core, L);
-      const [r, g, b] = hexToRgb(this.look.spectral && !L.core ? mixHex(shown, '#FFFFFF', 0.22) : shown);
+      const [r, g, b] = hexToRgb(L.core ? shown : mixHex(shown, '#FFFFFF', 0.22));
       u.uColors.value[k].setRGB(r / 255, g / 255, b / 255, THREE.SRGBColorSpace);
       const lam = L.lamellae ?? [];
       u.uCounts.value[k] = Math.max(1, Math.min(MAX_LAMELLAE, lam.length || 1));
@@ -354,8 +328,7 @@ export class PearlStage extends EventTarget {
     lidPivot.add(lidInner);
     const layers = [];
     for (let k = 0; k < N; k++) {
-      const mat = createNacre({ shared: this.shared, dissolve: true });
-      this.applyMaterialLook(mat);
+      const mat = createCrystal({ shared: this.shared, dissolve: true });
       mat.userData.own.uDisR.value = Math.max(0.3, extents(F, k).full);
       const lower = new THREE.Mesh(surfaceGeometry(F, k, 'lower'), mat);
       const upper = new THREE.Mesh(surfaceGeometry(F, k, 'upper'), mat);
@@ -580,12 +553,14 @@ export class PearlStage extends EventTarget {
       const local = this.scaleG.worldToLocal(hit.point.clone());
       this.shared.uWarmPos.value.copy(local);
       this.warmTarget = 1;
+      this.spring.target = 0.975;
     }
   }
 
   release() {
     this.pressing = false;
     this.warmTarget = 0;
+    this.spring.target = 1;
     this.water.release();
     if (!matchMedia?.('(hover: hover)').matches) { this.pointer.tx = 0; this.pointer.ty = 0; }
   }
@@ -683,7 +658,7 @@ export class PearlStage extends EventTarget {
       this.countK = k;
       if (this.depthTarget > 0) { lit.fill(0); lit[k] = 1; }
       else this.pulse = 1;
-      if (this.look.spectral && this.depthTarget === 0) this.spec.body.flow += 0.6;
+      if (this.depthTarget === 0) this.spec.body.flow += 0.6;
       this.emit('count', { k, n: k + 1, total: top + 1, layer: this.view.layers[k] });
       this.haptic(8);
       await this.animator.wait(this.reduce ? 0.12 : 0.42);
@@ -709,9 +684,8 @@ export class PearlStage extends EventTarget {
     switch (effect.type) {
       case 'observe':
         this.setView(view);
-        // 它在听：Apple 式里颜色流得快一阵，再慢慢静下来；其他方向是一道光从下往上扫过
-        if (this.look.spectral) this.spec.body.flow += 5;
-        else this.sweep();
+        // 它在听：颜色流得快一阵，再慢慢静下来
+        this.spec.body.flow += 5;
         this.caption('它在听：你说的，变成它此刻的状态');
         break;
       case 'seal': {
@@ -720,10 +694,7 @@ export class PearlStage extends EventTarget {
         this.glowTargets.body = p.pBody;
         this.glowTargets.shadow = p.pShadow;
         this.flash = 1;
-        // 两者都给出了判断：极光在两者身上各亮一下，亮度按各自的概率
-        this.aur.flashBody = 0.7 * p.pBody;
-        this.aur.flashShadow = 0.8 * p.pShadow;
-        // Apple 式：两者的颜色各自浓一下、流一下，浓淡按各自的概率
+        // 两者都给出了判断：两者的颜色各自浓一下、流一下，浓淡按各自的概率
         this.spec.body.boost += 0.7 * p.pBody;
         this.spec.shadow.boost += 0.7 * p.pShadow;
         this.spec.body.flow += 1.5;
@@ -755,15 +726,6 @@ export class PearlStage extends EventTarget {
     this.emit('applied', change);
   }
 
-  sweep() {
-    if (this.reduce) return;
-    const top = this.ext.top + 0.2, bottom = -this.ext.bottom - 0.2;
-    this.animator.run(1.8, (t) => {
-      this.shared.uSweepY.value = bottom + (top - bottom) * t;
-      this.shared.uSweepAmt.value = Math.sin(Math.PI * t);
-    }, { easing: ease.inOutSine });
-  }
-
   async resolveSequence(change) {
     const { effect, view } = change;
     const id = effect.prediction.id;
@@ -771,12 +733,8 @@ export class PearlStage extends EventTarget {
     const pos = at ?? { x: this.droplets.layout.x, z: this.droplets.layout.z };
     const amp = (this.reduce ? 0.35 : 0.55) + 1.7 * effect.surpriseShadow;
     const catCol = view.cats.get(effect.category)?.color ?? '#ffffff';
-    const look = this.look;
-    const col = look.ripple ?? (look.spectral ? mixHex(tone(catCol), '#FFFFFF', 0.25) : look.aurora === 'none' ? catCol : vivid(catCol, 0.62, 0.66));
-    this.water.addRipple(pos.x, pos.z, amp, col, this.time);
-    // 结果落在倒影上：极光只在倒影身上闪过，晶体不动
-    this.aur.flashShadow = 0.5 + 0.9 * effect.surpriseShadow;
-    // Apple 式：倒影的颜色被搅动，意外越大搅得越厉害；晶体的颜色不动
+    this.water.addRipple(pos.x, pos.z, amp, mixHex(tone(catCol), '#FFFFFF', 0.25), this.time);
+    // 结果落在倒影上：倒影的颜色被搅动，意外越大搅得越厉害；晶体的颜色不动
     this.spec.shadow.flow += 3 + 7 * effect.surpriseShadow;
     this.spec.shadow.boost += 0.3 + 0.8 * effect.surpriseShadow;
     this.haptic(14);
@@ -804,16 +762,14 @@ export class PearlStage extends EventTarget {
     await this.animator.run(0.9, (t) => { this.water.shimmer = t * 0.9; this.glowTargets.shadow = t; });
     await this.animator.run(1.1, (t) => { this.column.rise = t; this.column.amt = t; }, { easing: ease.outCubic });
     const own = this.proxyMat.userData.own;
-    const look = this.look;
     const next = this.latest ?? view;
     const newCat = next.layers[next.layers.length - 1]?.category;
-    own.uGrowColor.value.set(look.spectral ? tone(next.cats.get(newCat)?.color ?? '#FFFFFF') : '#bff0dc');
+    own.uGrowColor.value.set(tone(next.cats.get(newCat)?.color ?? '#FFFFFF'));
     // setView 之后，新一层的颜色按它的分量慢慢铺开（光谱的分量有过渡）
     this.setView(next, { transition: 'grow' });
-    this.aur.flashBody = look.aurora === 'none' ? 0 : 1.1;
-    if (look.spectral) { this.spec.body.boost += 1.0; this.spec.body.flow += 3; }
-    const growAmt = look.spectral ? 0.3 : 0.7;
-    await this.animator.run(1.9, (t) => { own.uGrow.value = Math.sin(Math.PI * t) * growAmt; });
+    this.spec.body.boost += 1.0;
+    this.spec.body.flow += 3;
+    await this.animator.run(1.9, (t) => { own.uGrow.value = Math.sin(Math.PI * t) * 0.3; });
     own.uGrow.value = 0;
     this.haptic(24);
     await this.animator.run(1.3, (t) => {
@@ -850,8 +806,7 @@ export class PearlStage extends EventTarget {
     const yLine = cam.y + (bottomY - cam.y) * ((cam.z - zd) / cam.z);
     const yTop = Math.max(0.3, yLine - 0.1);
     this.droplets.setLayout({ x: R * 0.22 + 0.08, z: zd, yTop, yBottom: 0.14, size: 0.06 + 0.015 * Math.min(1, R) });
-    const tint = this.look.droplet;
-    this.droplets.sync(this.view.pending.map((p) => ({ ...p, color: tint ?? tone(p.color) })), this.reduce);
+    this.droplets.sync(this.view.pending.map((p) => ({ ...p, color: LOOK.droplet })), this.reduce);
   }
 
   // ───────────────────────── 画面 ─────────────────────────
@@ -908,79 +863,22 @@ export class PearlStage extends EventTarget {
     this.host.setAttribute('aria-label', `derbeebee 的晶体：${v.layers.length} 代，${shadow}，当前视角：${depth}。拖动转动，双指或 + − 键挖深，轻点选中。`);
   }
 
-  // 色彩方向：同一套几何与数据，只换颜色、光和极光出现的方式
-  get look() {
-    return LOOKS[this.lookId] ?? LOOKS.apple;
-  }
-
-  setLook(id) {
-    if (!LOOKS[id] || id === this.lookId) return;
-    this.lookId = id;
-    this.host.dataset.look = id;
-    setTone(id);
-    this.droplets.clear();
-    this.applyTheme();
-    if (this.view) this.setView(this.view);
-    this.emit('look', { look: this.look });
-  }
-
-  // 数据颜色在不同色彩方向下怎么显示（见 core/tone.js）：Apple 式落进光谱的色调；
-  // 珍珠母原样；The Expanse 式压成哑光。核用各自的晶体底色。
+  // 数据颜色怎么显示（见 core/tone.js）：落进光谱的色调；核用晶体的底色
   mapColor(hex, isCore, L = null) {
-    const look = this.look;
-    if (isCore) return look.pearl ?? hex;
-    return L ? layerTone(L, look.id) : tone(hex, look.id);
+    if (isCore) return LOOK.pearl;
+    return L ? layerTone(L) : tone(hex);
   }
 
-  // 推荐方向的极光颜色来自这个人的几类事：层数最多的几类，提亮成极光色
-  lifeAurora(view) {
-    const count = new Map();
-    for (const L of view.layers) if (!L.core) count.set(L.category, (count.get(L.category) ?? 0) + 1);
-    if (view.shadow.category) count.set(view.shadow.category, (count.get(view.shadow.category) ?? 0) + 0.5);
-    const top = [...count.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => view.cats.get(c)?.color).filter(Boolean).slice(0, 4);
-    const l = this.pal?.dark ? 0.62 : 0.6;
-    const cols = top.map((c) => vivid(c, l, 0.66));
-    const fill = [vivid('#8FE6CC', l, 0.6), vivid('#B7A6FF', l, 0.6), vivid('#9CC8FF', l, 0.6)];
-    while (cols.length < 4) cols.push(fill[cols.length % fill.length]);
-    return cols;
-  }
-
-  // Apple 式的光柱：从水里升起的，是正在长成的那一类事的颜色（提亮一些，一道柔和的光）
-  specColumnColor(view) {
-    const L = view.layers[view.layers.length - 1];
-    const c = view.cats.get(view.shadow.category ?? L?.category)?.color;
-    return c ? mixHex(tone(c, 'apple'), '#FFFFFF', 0.35) : null;
-  }
-
-  applyLookColors() {
-    const look = this.look;
-    const cols = this.view ? this.lifeAurora(this.view) : ['#3FA9FF', '#8D5BFF', '#FF5EB8', '#FF9F43'];
-    for (const u of [this.shared.uAurCols, this.sShared.uAurCols, this.column.mat.uniforms.uAurCols]) {
-      u.value.forEach((c, i) => c.set(cols[i % cols.length]));
-    }
-    const specCol = look.spectral && this.view ? this.specColumnColor(this.view) : null;
-    this.column.mat.uniforms.uColor.value.set(look.column ?? specCol ?? '#F4FFFA');
-    this.column.mat.uniforms.uAurMix.value = look.aurora === 'events' ? 1 : 0;
-    this.column.moteMat.uniforms.uColor.value.set(look.column ?? '#FFFFFF');
-  }
-
-  applyMaterialLook(mat, shadow = false) {
-    const look = this.look, m = look.material;
-    mat.roughness = m.roughness + (shadow ? 0.08 : 0);
-    mat.metalness = m.metalness;
-    mat.iridescence = m.iridescence;
-    mat.iridescenceThicknessRange = shadow ? [m.irRange[0] + 40, m.irRange[1] + 40] : m.irRange.slice();
-    mat.sheen = m.sheen;
-    mat.sheenColor.set(shadow ? mixHex(m.sheenColor, '#CFF1E6', 0.5) : m.sheenColor);
-    mat.envMapIntensity = m.envMapIntensity * (shadow ? 0.82 : 1);
-    mat.clearcoat = m.clearcoat ?? 1;
-    // 光谱是算好的颜色，不再经过色调映射：画出来的就是设计的那个颜色
-    const tm = !look.spectral;
-    if (mat.toneMapped !== tm) { mat.toneMapped = tm; mat.needsUpdate = true; }
+  // 光柱：从水里升起的，是正在长成的那一类事的颜色（提亮一些，一道柔和的光）
+  applyColumnColor() {
+    const v = this.view;
+    const L = v?.layers[v.layers.length - 1];
+    const c = v?.cats.get(v.shadow.category ?? L?.category)?.color;
+    this.column.mat.uniforms.uColor.value.set(c ? mixHex(tone(c), '#FFFFFF', 0.35) : '#F4FFFA');
   }
 
   applyTheme() {
-    const pal = readPalette(this.host, this.lookId);
+    const pal = readPalette(this.host);
     this.pal = pal;
     const old = this.envRT;
     this.envRT = buildEnvironment(this.renderer, pal);
@@ -992,36 +890,28 @@ export class PearlStage extends EventTarget {
     wu.uTint.value.set(pal.waterTint);
     this.capMat.uniforms.uBg.value.set(pal.bg);
     this.capMat.uniforms.uCoreGlow.value.set(pal.coreGlow);
-    this.shared.uBaseGlow.value = pal.baseGlow;
-    this.sShared.uBaseGlow.value = pal.baseGlow;
     this.renderer.toneMappingExposure = pal.exposure;
     this.outlineMat.color.set(pal.sub);
-    this.applyMaterialLook(this.proxyMat);
-    this.applyMaterialLook(this.shadowMat, true);
-    this.asm?.layers.forEach((L) => this.applyMaterialLook(L.mat));
-    this.capMat.uniforms.uDiffMin.value = this.look.env === 'space' ? 0.52 : 0.8;
-    this.capMat.uniforms.uGlassCap.value = this.look.glass ? 1 : 0;
-    // 光谱方向的颜色是算好的，剖面也不再做色调映射，和身体对得上
-    if (this.capMat.toneMapped !== !this.look.spectral) { this.capMat.toneMapped = !this.look.spectral; this.capMat.needsUpdate = true; }
-    this.capMat.uniforms.uKey.value.set(...(this.look.env === 'space' ? [-0.85, 0.42, 0.3] : [-0.45, 0.8, 0.4])).normalize();
     // 光谱：两极的颜色；倒影里的主光也按镜像，倒影才像同一个东西的倒影
-    const sp = this.look.spec;
+    const sp = LOOK.spec;
     for (const [u, mirror] of [[this.shared, false], [this.sShared, true]]) {
-      u.uSpec.value = this.look.spectral ? 1 : 0;
       u.uSpecDark.value = pal.dark ? 1 : 0;
-      if (sp) {
-        u.uSpecTop.value.set(...oklabOf(sp.top));
-        u.uSpecBottom.value.set(...oklabOf(sp.bottom));
-      }
+      u.uSpecTop.value.set(...oklabOf(sp.top));
+      u.uSpecBottom.value.set(...oklabOf(sp.bottom));
       // 倒影在着色器里把世界坐标的 y 翻回来（uMirrorY），摄影棚还是同一个
       u.uMirrorY.value = mirror ? -1 : 1;
-      const gl = this.look.glass;
+      const gl = LOOK.glass;
       const mode = pal.dark ? 'dark' : 'light';
       u.uGlaze.value = gl ? gl.glaze : 0;
       if (gl?.facet) u.uFacetK.value.set(...gl.facet);
       u.uLit.value = gl?.lit ?? 0;
       u.uIri.value = gl?.iri ?? 0;
       u.uGloss.value = gl?.gloss ?? 0;
+      if (gl?.trans) u.uTrans.value.set(...gl.trans);
+      if (gl?.sheen) u.uSheen.value.set(...gl.sheen);
+      u.uView.value = gl?.view ?? 1;
+      u.uRim.value = gl?.rim ?? 0;
+      u.uClear.value = gl?.clear ?? 1;
       u.uChromaGain.value = gl?.chroma?.[0] ?? 1;
       u.uChromaCap.value = gl?.chroma?.[1] ?? 0.16;
       u.uDeep.value = gl?.deep?.[pal.dark ? 1 : 0] ?? 0;
@@ -1032,11 +922,7 @@ export class PearlStage extends EventTarget {
         u.uStudioKey.value.setRGB(...studio.key);
       }
     }
-    this.facetBase = this.look.glass?.facet ?? null;
-    this.sun.intensity = this.look.env === 'space' ? 3.4 : 0;
-    this.hud.visible = this.look.env === 'space';
-    this.sun.color.set(pal.key);
-    this.applyLookColors();
+    this.applyColumnColor();
   }
 
   resize() {
@@ -1207,7 +1093,10 @@ export class PearlStage extends EventTarget {
     const period = 5.6 + 2.2 * this.doze;
     this.breathPhase += (dt * Math.PI * 2) / period;
     const breath = this.reduce ? 0 : Math.sin(this.breathPhase);
-    const s = WS * (1 + 0.0045 * breath * (1 - 0.4 * this.doze));
+    const sp = this.spring;
+    if (this.reduce) { sp.x = sp.target; sp.v = 0; }
+    else for (let i = 0; i < 2; i++) { sp.v += (260 * (sp.target - sp.x) - 15 * sp.v) * (dt / 2); sp.x += sp.v * (dt / 2); }
+    const s = WS * (1 + 0.0045 * breath * (1 - 0.4 * this.doze)) * sp.x;
     this.scaleG.scale.setScalar(s);
     this.hoverY = damp(this.hoverY, this.hoverTarget, 1.6, dt);
     const bob = this.reduce ? 0 : 0.012 * Math.sin(this.breathPhase + 0.6);
@@ -1224,73 +1113,45 @@ export class PearlStage extends EventTarget {
     const shiver = this.reduce ? 0 : Math.sin(this.shiverT * 24) * Math.exp(-this.shiverT * 4.5) * 0.028;
     this.sScale.scale.set(s * (1 + shiver), s * (1 - shiver * 0.6), s * (1 + shiver));
 
-    // 微光：预判封存时本体和倒影各自发亮；按压时晶体微微回应
+    // 信心与数数都表现为颜色变浓（没有光晕，不往轮廓上加白光）：预判封存时本体和倒影各自浓一下
     this.flash = damp(this.flash ?? 0, 0, 1.4, dt);
     this.pulse = damp(this.pulse ?? 0, 0, 5, dt);
     this.glowBody = damp(this.glowBody, this.glowTargets.body, 2, dt);
     this.glowShadow = damp(this.glowShadow, this.glowTargets.shadow, 2, dt);
     const awake = 1 - 0.35 * this.doze;
-    const look = this.look;
-    const spectral = !!look.spectral;
-    // Apple 式没有光晕：不往轮廓上加白光，信心与数数都表现为颜色变浓
-    this.shared.uGlow.value = spectral ? 0 : (this.glowBody * 0.3 + this.flash * this.glowTargets.body * 0.35) * awake;
-    this.sShared.uGlow.value = spectral ? 0 : (this.glowShadow * 0.45 + this.flash * this.glowTargets.shadow * 0.5) * awake;
-    this.shared.uPulse.value = spectral ? 0 : this.pulse;
-    if (spectral) {
-      // 光谱：分量慢慢流到新的比例；颜色一直在缓缓流动（它在），事件时流得快一阵、浓一阵
-      const B = this.spec.body, S = this.spec.shadow;
-      for (const st of [B, S]) {
-        for (let i = 0; i < 8; i++) st.w[i] = this.reduce ? st.wT[i] : damp(st.w[i], st.wT[i], 1.4, dt);
-        st.mature = this.reduce ? st.matureT : damp(st.mature, st.matureT, 1.1, dt);
-        st.flow = damp(st.flow, 0, 0.8, dt);
-        st.boost = damp(st.boost, 0, 0.7, dt);
-      }
-      const speed = this.reduce ? 0 : 1 - 0.6 * this.doze;
-      B.phase += dt * speed * (1 + B.flow);
-      // 倒影的颜色跟着本体流；被结果搅动以后，按两者判断的一致程度，慢慢回到和本体一样
-      S.phase += dt * speed * (1 + S.flow);
-      S.phase += (B.phase - S.phase) * (1 - Math.exp(-(0.25 + 1.1 * this.agreement) * dt));
-      // 主光跟着指针（或手指、手机的倾斜）慢慢移过去
-      const P = this.pointer;
-      P.x = damp(P.x, clamp(P.tx + this.tilt.x, -1, 1), 3, dt);
-      P.y = damp(P.y, clamp(P.ty + this.tilt.y, -1, 1), 3, dt);
-      this.shared.uPointer.value.set(P.x, P.y);
-      this.sShared.uPointer.value.set(P.x, P.y);
-      this.capMat.uniforms.uPointer.value.set(P.x, P.y);
-      // 主光（世界坐标）跟着指针；倒影里 y 翻过来，在着色器的局部坐标里自然就对了
-      this.shared.uGlowKey.value.set(-0.52 + 0.3 * P.x, 0.6 + 0.2 * P.y, 0.6).normalize();
-      this.sShared.uGlowKey.value.set(-0.52 + 0.3 * P.x, -(0.6 + 0.2 * P.y), 0.6).normalize();
-      const gB = this.glowBody * 0.45 + this.flash * this.glowTargets.body * 0.5 + this.pulse * 0.6;
-      const gS = this.glowShadow * 0.55 + this.flash * this.glowTargets.shadow * 0.6;
-      // 晶体也在呼吸（亮度 ±4%），事情发生时按浓度亮一点；打盹时暗一点
-      const breathe = this.reduce ? 0 : 0.04 * Math.sin(this.breathPhase - 0.4);
-      const fb = this.facetBase;
-      for (const [u, st, g] of [[this.shared, B, gB], [this.sShared, S, gS]]) {
-        u.uCatW.value.set(st.w);
-        u.uSpecMature.value = st.mature;
-        u.uSpecTime.value = st.phase;
-        u.uSpecBoost.value = Math.min(1.6, st.boost + g * awake);
-        if (fb) u.uFacetK.value.x = fb[0] * (1 + breathe + 0.06 * Math.min(1.2, u.uSpecBoost.value)) * (0.94 + 0.06 * awake);
-      }
+    // 光谱：分量慢慢流到新的比例；颜色一直在缓缓流动（它在），事件时流得快一阵、浓一阵
+    const B = this.spec.body, S = this.spec.shadow;
+    for (const st of [B, S]) {
+      for (let i = 0; i < 8; i++) st.w[i] = this.reduce ? st.wT[i] : damp(st.w[i], st.wT[i], 1.4, dt);
+      st.mature = this.reduce ? st.matureT : damp(st.mature, st.matureT, 1.1, dt);
+      st.flow = damp(st.flow, 0, 0.8, dt);
+      st.boost = damp(st.boost, 0, 0.7, dt);
     }
-    // 极光：珍珠母方向只在事情发生时出现；Apple 式与 The Expanse 式没有
-    const pending = !!this.view?.pending?.length;
-    const restB = look.aurora === 'events' && pending ? 0.12 : 0;
-    const restS = look.aurora === 'events' && pending ? 0.14 : 0;
-    this.aur.flashBody = damp(this.aur.flashBody, 0, 0.9, dt);
-    this.aur.flashShadow = damp(this.aur.flashShadow, 0, 0.8, dt);
-    const on = look.aurora === 'none' ? 0 : 1;
-    this.aur.body = damp(this.aur.body, on * (restB + this.aur.flashBody), 4, dt);
-    this.aur.shadow = damp(this.aur.shadow, on * (restS + this.aur.flashShadow), 4, dt);
-    this.shared.uAurora.value = this.aur.body * (1 - 0.3 * this.doze);
-    this.sShared.uAurora.value = this.aur.shadow;
-    this.shared.uAurTime.value = this.sShared.uAurTime.value = this.reduce ? 0 : t;
-    if (this.hud.visible) {
-      const R = this.ext.max * WS;
-      this.hud.position.copy(this.anchor.position);
-      this.hud.scale.setScalar(R * 1.42);
-      this.hud.rotation.set(0.12, this.reduce ? 0 : t * 0.04, 0.05);
-      this.hudMat.opacity = 0.5 * (1 - clamp(this.depth, 0, 1));
+    const speed = this.reduce ? 0 : 1 - 0.6 * this.doze;
+    B.phase += dt * speed * (1 + B.flow);
+    // 倒影的颜色跟着本体流；被结果搅动以后，按两者判断的一致程度，慢慢回到和本体一样
+    S.phase += dt * speed * (1 + S.flow);
+    S.phase += (B.phase - S.phase) * (1 - Math.exp(-(0.25 + 1.1 * this.agreement) * dt));
+    // 主光跟着指针（或手指、手机的倾斜）慢慢移过去
+    const P = this.pointer;
+    P.x = damp(P.x, clamp(P.tx + this.tilt.x, -1, 1), 3, dt);
+    P.y = damp(P.y, clamp(P.ty + this.tilt.y, -1, 1), 3, dt);
+    this.shared.uPointer.value.set(P.x, P.y);
+    this.sShared.uPointer.value.set(P.x, P.y);
+    this.capMat.uniforms.uPointer.value.set(P.x, P.y);
+    // 主光（世界坐标）跟着指针；倒影里 y 翻过来，在着色器的局部坐标里自然就对了
+    this.shared.uGlowKey.value.set(-0.52 + 0.3 * P.x, 0.6 + 0.2 * P.y, 0.6).normalize();
+    this.sShared.uGlowKey.value.set(-0.52 + 0.3 * P.x, -(0.6 + 0.2 * P.y), 0.6).normalize();
+    const gB = this.glowBody * 0.45 + this.flash * this.glowTargets.body * 0.5 + this.pulse * 0.6;
+    const gS = this.glowShadow * 0.55 + this.flash * this.glowTargets.shadow * 0.6;
+    // 晶体也在呼吸（亮度 ±4%），事情发生时按浓度亮一点；打盹时暗一点
+    const breathe = this.reduce ? 0 : 0.04 * Math.sin(this.breathPhase - 0.4);
+    for (const [u, st, g] of [[this.shared, B, gB], [this.sShared, S, gS]]) {
+      u.uCatW.value.set(st.w);
+      u.uSpecMature.value = st.mature;
+      u.uSpecTime.value = st.phase;
+      u.uSpecBoost.value = Math.min(1.6, st.boost + g * awake);
+      u.uLum.value = (1 + breathe + 0.06 * Math.min(1.2, u.uSpecBoost.value)) * (0.94 + 0.06 * awake);
     }
     this.shared.uWarmAmt.value = damp(this.shared.uWarmAmt.value, this.warmTarget ? 1 : 0, this.warmTarget ? 8 : 0.9, dt);
 
@@ -1401,10 +1262,4 @@ function pct(v) {
 function fmtShort(L) {
   if (!L || L.core) return '诞生';
   return `${L.source ?? ''}`;
-}
-
-function hashId(s = '') {
-  let h = 7;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h;
 }

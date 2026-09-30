@@ -123,15 +123,6 @@ table.compact td:first-child { white-space: normal; }
 .shape-pick button:hover, .shape-pick button[aria-pressed="true"] { background: var(--dbb-card); box-shadow: 0 0 0 1px var(--dbb-line) inset; }
 .shape-pick b { font: 700 16px var(--dbb-serif); color: var(--dbb-ink); }
 .shape-pick small { font-size: 11px; line-height: 1.4; color: var(--dbb-soft); }
-.look-pick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.look-pick button {
-  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 14px; cursor: pointer;
-  background: transparent; text-align: left; transition: background 0.2s;
-}
-.look-pick button:hover, .look-pick button[aria-pressed="true"] { background: var(--dbb-card); box-shadow: 0 0 0 1px var(--dbb-line) inset; }
-.look-pick span { display: grid; }
-.look-pick b { font: 700 14px/1.3 var(--dbb-serif); color: var(--dbb-ink); }
-.look-pick small { font-size: 11px; color: var(--dbb-soft); }
 .note-box { font-size: 14px; background: var(--dbb-card); border-radius: 12px; padding: 12px 14px; box-shadow: 0 0 0 1px var(--dbb-line) inset; }
 .note-box b { color: var(--dbb-ink); font-weight: 500; }
 .trio { display: flex; flex-wrap: wrap; gap: 18px; }
@@ -162,7 +153,6 @@ table.compact td:first-child { white-space: normal; }
   .defs div { grid-template-columns: 1fr; gap: 2px; }
   .rules div { grid-template-columns: 1fr; gap: 0; }
   .shape-pick { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .look-pick { grid-template-columns: 1fr; }
   .inline-demo dbb-depth-rail .dbb-rail { flex-direction: row; flex-wrap: wrap; }
   .top-nav a { padding: 4px 8px; }
 }

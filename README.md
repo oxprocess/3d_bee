@@ -13,7 +13,7 @@
 
 完整的规则、公式和接口在 [`docs/spec.md`](docs/spec.md)。
 
-形状是一颗**晶体**：赤道上一类事一个角（工作、健康、朋友、家人），哪一类经历得多，那个角就伸得远；轮廓修长，上尖短、下尖长；每一代是一个完整的小晶体，一个套一个。色彩是 **Apple Intelligence 式**的极光五彩，质感是**极光水晶**：只有一层，五彩极光就在表面上，每个面一段干净的渐变；刻面明暗分得开，朝光的面亮而透，棱不画线；柔光箱映在抛光的平面上，转动时一条直的明暗边界扫过刻面，主光跟着你的指针；没有光晕。每一类事的颜色在它的那个角，长得越多那一片越宽，代数越多颜色越浓；诞生时颜色都在，都很淡。详图 [`docs/crystal-aurora.jpg`](docs/crystal-aurora.jpg)，规则见 spec 第 7、11 节。另外两个方向（珍珠母、The Expanse 式）留作对比：[`docs/color-directions.jpg`](docs/color-directions.jpg)，在实验台左侧可以切换。
+形状是一颗**圆润的晶体**：赤道上一类事一个角（工作、健康、朋友、家人），哪一类经历得多，那个角就伸得远；轮廓修长，上尖短、下尖长；棱和尖都磨圆了（超椭圆，曲率连续，尖是柔和的圆头），像一颗被水流打磨过的晶石；每一代是一个完整的小晶体，一个套一个，圆角也一层套一层。色彩是 **Apple Intelligence 式**的极光五彩，质感是**圆润的极光水晶**：只有一层，五彩极光就在表面上，顺着曲面流过圆润的棱，相冲的两种颜色之间是一段清透的亮；明暗跟着视线（正对你的面透亮，侧过去的面深而浓）；抛光的曲面映出头顶的光，下沿一条清楚的地平线，柔光箱跟着你的指针走；按一下它会轻轻回弹；没有光晕。每一类事的颜色在它的那个角，长得越多那一片越宽，代数越多颜色越浓；诞生时颜色都在，都很淡。为什么这样设计（亲和、智能、未来、极光，以及平静、活的、可信……）见 spec 第 11.6 节；详图 [`docs/crystal-aurora.jpg`](docs/crystal-aurora.jpg)，规则见 spec 第 7、11 节。
 
 ## 结构
 
@@ -22,7 +22,7 @@ src/
   core/        数据：账本（只追加）、从账本推导的形态状态、生长规则、演示数据
     ledger.js    createStore / reduce / canInherit
     view.js      deriveView / BINDINGS（每个细节 ← 哪个字段）
-    growth.js    RULE / layerSpec / radiiField / diamondField / restPose
+    growth.js    RULE / layerSpec / radiiField / diamondField / SOFT（磨圆）/ restPose
     tone.js      显示色调：3D、卡片、时间轴用同一套颜色
     demo-data.js 宽展、收束、偏展、转向、诞生、爸妈出游
   three/       3D：PearlStage（晶体、倒影、水面、水滴、光柱、手势、挖掘）

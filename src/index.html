@@ -15,7 +15,7 @@
 <body>
 <a class="skip" href="#cover">跳到正文</a>
 <header class="top">
-  <span class="wordmark">derbeebee</span>
+  <span class="wordmark"><span class="mark" data-logo='{"reach":0.34,"motion":true}' aria-hidden="true"></span>derbeebee</span>
   <nav class="top-nav" aria-label="页面">
     <a href="#cover" aria-current="page">形态走查</a>
     <a href="./lab.html" data-lab-link>实验台</a>
@@ -294,6 +294,52 @@
   <p>剖开以后，切面是一圈套一圈的圆润菱形环带：每一代一圈，靠外的边缘更亮，表面一层柔和的光泽。第一次出现时，颜色从诞生般的淡慢慢亮起来：它醒过来。</p>
   <p class="api">外形：<code>SOFT = { P: 10, g: 1.06, tip: 0.86 }</code>（<code>core/growth.js</code>），轮廓 <code>DIAMOND = { top: 1.22, bottom: 1.6 }</code>；网格上的点按表面弯的程度分布（棱和尖密、面上疏），法线解析求出。质感在 <code>LOOK.glass</code>：<code>view</code> 侧面的深浅 · <code>trans</code> 透光 · <code>sheen</code> 头顶的光 · <code>rim</code> 内侧一圈 · <code>clear</code> 清透的一段 · <code>iri</code> 全息偏色 · <code>lit</code> 朝光提亮 · <code>gloss</code> 抛光 · <code>chroma</code> 彩度。按住的回弹：刚度 260、阻尼 15。倾斜只在不需要授权的设备上监听，不为一道高光弹窗打扰人。</p>
   <button type="button" class="replay" data-replay>再转一次</button>
+</section>
+
+<section class="ch" id="brand" data-preset="brand" data-label="标志 · 一个主体，一个影子">
+  <p class="eyebrow">标志 · 2D</p>
+  <h2>它，和它的倒影：一个主体，一个影子</h2>
+  <p>2D 的标志就是 3D 的那颗晶体：诞生时的那一颗，四个角一样远，一个角正对你。轮廓不是另画的，由同一条生长规则算出来，3D 怎么磨圆，标志就怎么圆。下面是它在水里的影子：同一颗晶体倒过来，淡一点，越往下越淡。主体是现在替你做事的方法，影子是正在练习的新方法。</p>
+  <div class="logo-hero">
+    <figure class="logo-tile"><span data-logo='{"theme":"light","motion":true}'></span><figcaption>主标志 · 浅色</figcaption></figure>
+    <figure class="logo-tile dark"><span data-logo='{"theme":"dark","motion":true}'></span><figcaption>深色</figcaption></figure>
+  </div>
+  <h3>前沿的科技与 AI 标志在怎么做</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>参照</th><th>它怎么做</th><th>借什么、避开什么</th></tr></thead>
+      <tbody>
+        <tr><td>Gemini（2025）</td><td>星形的尖削圆，改成蓝、红、黄、绿的渐变，和 Google 的“G”成一家；尖在小尺寸上会缩成细线，所以改圆</td><td>圆润；渐变本身就是品牌</td></tr>
+        <tr><td>Apple Intelligence</td><td>七个环的连续曲线，柔和的粉、紫、蓝、橙；和 Siri 的边缘光是同一种光</td><td>标志里的光，就是产品里的光</td></tr>
+        <tr><td>OpenAI（2025）</td><td>第一次改版：Blossom 的线条改成等粗，定制字体带一点不规则，让它更有人味</td><td>字标温和，不做机器感</td></tr>
+        <tr><td>Copilot、Meta AI</td><td>流动的彩色丝带；会随声音起伏的液态光环</td><td>标志会动，动作跟着事情</td></tr>
+        <tr><td>✨ 星光</td><td>几乎所有 AI 都在用；NN/g 与 Google 的研究都发现它意思含糊，还暗示“魔法”</td><td>避开：不用星光，用一个只属于我们的形</td></tr>
+        <tr><td>MIT Media Lab 动态标志</td><td>一套算法生成 4 万种组合，每个人一个</td><td>每个人的晶体就是他自己的标志（缩略图）</td></tr>
+        <tr><td>对称标志的研究</td><td>对称的标志让人觉得更稳，品质感更高</td><td>主体与影子上下对称</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>怎么设计</h3>
+  <ul class="bullets">
+    <li><b>一个只属于我们的形，而不是星光。</b>星光已经被用滥了，也说不清是什么。我们的形是晶体和它的影子：产品里本来就有的东西。</li>
+    <li><b>从同一条规则长出来。</b>标志的轮廓由 3D 的生长规则算出来，和 3D、缩略图是同一个东西。</li>
+    <li><b>先黑白，后颜色。</b>形在单色、16 像素下都立得住，再上渐变。单色版的影子是三道横线，像水里的倒影。</li>
+    <li><b>渐变就是品牌。</b>极光五彩斜着流，像光在走；上尖薄荷、下尖兰紫；两种相冲的颜色之间是一段清透的亮，不走灰。</li>
+    <li><b>光在形里面。</b>头顶的光映在上半，下沿一条清楚的地平线，和 3D 一样；朝光的那条边一点光。没有光晕、没有投影。</li>
+    <li><b>圆润、对称、安静。</b>圆角让人想靠近，上下对称让人觉得稳；不动的时候，它就是一颗安静的晶体。</li>
+    <li><b>会动，但克制。</b>动起来时色带缓缓地流，和 3D 的颜色一样慢；开启“减少动态效果”时不动。</li>
+  </ul>
+  <h3>一整套</h3>
+  <div class="logo-grid">
+    <figure class="logo-tile"><span data-logo='{"theme":"light","mono":"#1C1C22"}'></span><figcaption>单色</figcaption></figure>
+    <figure class="logo-tile"><span data-logo='{"theme":"light","mono":"#1C1C22","water":"lines"}'></span><figcaption>单色 · 线条影子（印刷）</figcaption></figure>
+    <figure class="logo-tile dark"><span data-logo='{"theme":"dark","mono":"#FFFFFF","water":"lines"}'></span><figcaption>反白</figcaption></figure>
+    <figure class="logo-tile icon"><span data-logo='{"kind":"icon","theme":"light"}'></span><figcaption>App 图标</figcaption></figure>
+    <figure class="logo-tile icon"><span data-logo='{"kind":"icon","theme":"dark"}'></span><figcaption>App 图标 · 深色</figcaption></figure>
+    <figure class="logo-tile sizes"><span data-logo='{"theme":"light","water":"none","glint":0}'></span><span data-logo='{"theme":"light","water":"none","glint":0}'></span><span data-logo='{"theme":"light","water":"none","glint":0}'></span><figcaption>页签图标：只留主体</figcaption></figure>
+    <figure class="logo-tile wide"><span data-logo='{"kind":"lockup","theme":"light"}'></span><figcaption>标志 + 字标：字的 x 高度骑在晶体的地平线上</figcaption></figure>
+  </div>
+  <p class="api"><code>ui/logo.js</code>：<code>logoSvg({ theme, mono, water: 'soft' | 'lines' | 'none', line, motion })</code> · <code>appIconSvg({ theme })</code> · <code>lockupSvg({ theme, mono })</code> · <code>faviconHref()</code>。轮廓来自 <code>core/growth.js</code> 的 <code>SOFT</code> 与 <code>DIAMOND</code>。导出的文件在 <code>docs/brand/</code>（<code>npm run brand</code>）。</p>
 </section>
 
 <section class="ch" id="shapes" data-preset="shapes" data-label="形状从哪里来">

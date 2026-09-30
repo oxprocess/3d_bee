@@ -3,8 +3,11 @@ import { PearlStage } from '../three/stage.js';
 import { createStore, reduce, normalizeLedger } from '../core/ledger.js';
 import { LEDGERS, STORY } from '../core/demo-data.js';
 import '../ui/index.js';
+import { logoSvg, appIconSvg, lockupSvg, faviconHref } from '../ui/logo.js';
+import { isDark, watchTheme, reducedMotion } from '../three/palette.js';
 
 export function boot({ stageEl, ledger = 'wide', stageOpts = {} }) {
+  logos();
   const store = createStore(LEDGERS[ledger]);
   const stage = new PearlStage(stageEl, stageOpts);
   stage.setView(store.view);
@@ -43,4 +46,29 @@ export function themeToggle(btn) {
   };
   btn.addEventListener('click', () => { i = (i + 1) % order.length; apply(); });
   apply();
+}
+
+// 标志：页签图标，以及页面上每一个 data-logo 的位置（值是 JSON：kind = mark | icon | lockup，其余是 logoSvg 的参数）。
+// 没写 theme 的跟着页面的深浅走
+export function logos() {
+  let icon = document.querySelector('link[rel="icon"]');
+  if (!icon) {
+    icon = document.createElement('link');
+    icon.rel = 'icon';
+    document.head.appendChild(icon);
+  }
+  icon.type = 'image/svg+xml';
+  icon.href = faviconHref();
+  const draw = () => {
+    for (const el of document.querySelectorAll('[data-logo]')) {
+      let o = {};
+      try { o = JSON.parse(el.dataset.logo || '{}'); } catch { /* 写错了就用默认 */ }
+      const { kind = 'mark', ...opts } = o;
+      opts.theme ??= isDark() ? 'dark' : 'light';
+      if (opts.motion && reducedMotion()) opts.motion = false;
+      el.innerHTML = kind === 'icon' ? appIconSvg(opts) : kind === 'lockup' ? lockupSvg(opts) : logoSvg(opts);
+    }
+  };
+  draw();
+  watchTheme(draw);
 }

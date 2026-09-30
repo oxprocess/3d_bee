@@ -2,12 +2,13 @@
   "name": "derbeebee-3d",
   "version": "0.1.0",
   "private": true,
-  "description": "derbeebee 3D 形态：珍珠与倒影的生长、交互与数据接口",
+  "description": "derbeebee 3D 形态：晶体与倒影的生长、交互与数据接口",
   "type": "module",
   "scripts": {
     "dev": "http-server -c-1 -p 5173 .",
     "build": "node scripts/build.mjs",
-    "check": "node scripts/check.mjs"
+    "check": "node scripts/check.mjs",
+    "brand": "node scripts/brand.mjs"
   },
   "dependencies": {
     "three": "0.186.0"

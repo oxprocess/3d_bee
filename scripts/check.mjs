@@ -19,7 +19,7 @@ await mkdir(out, { recursive: true });
 
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const cases = [
-  { page: 'index.html', size: [1440, 900], scheme: 'light', steps: ['#seal', '#resolve', '#dig', '#lens'] },
+  { page: 'index.html', size: [1440, 900], scheme: 'light', steps: ['#seal', '#resolve', '#dig', '#lens', '#brand'] },
   { page: 'index.html', size: [390, 844], scheme: 'dark', steps: ['#inherit'] },
   { page: 'lab.html', size: [1440, 900], scheme: 'light', clicks: ['seal', 'yes', 'iterate', 'burst'], dig: true },
 ];

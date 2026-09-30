@@ -316,6 +316,48 @@
 [Ametrine](https://en.wikipedia.org/wiki/Ametrine) ·
 [Refik Anadol](https://www.artsy.net/article/artsy-editorial-refik-anadols-mesmerizing-data-paintings-captivating-audiences-worldwide)
 
+## 13. 标志：一个主体，一个影子
+
+2D 的标志就是 3D 的那颗晶体：诞生时的那一颗，四个角一样远，一个角正对你；下面是它在水里的影子。主体是现在替你做事的方法，影子是正在练习的新方法（详图 [`logo.jpg`](logo.jpg)，文件在 [`brand/`](brand/)）。
+
+| 部分 | 做法 |
+|---|---|
+| 形 | 由同一条生长规则算出来（`SOFT`、`DIAMOND`）：晶体前后对称，正面看到的轮廓就是它的中截面 `r(θ) = softPoint(planes, cos θ, sin θ, 0)`；按弯的程度取 72 个点，转成平滑的三次贝塞尔。3D 怎么磨圆，标志就怎么圆 |
+| 颜色 | 极光五彩，和 3D 同一套色调：左到右兰紫、蓝、青、绿、金、琥珀、珊瑚，色带斜 10°，像光在流；上尖薄荷；往下尖先是一段清透的亮，再到兰紫（相冲的颜色之间不走灰，和 3D 一样） |
+| 光 | 上半映出头顶的光，下沿一条清楚的地平线（落在赤道上，和 3D 一样）；左边朝光亮一点，右下的面深一点，两个面之间是柔的；朝光的那条边（左上）一道很淡的光。没有光晕、没有投影 |
+| 影子 | 以水面为轴倒过来，只映颜色、不映头顶的光，越往下越淡：浅色底露出主体高度的 60%；深色底露出 50%、颜色提亮（低透明度的颜色落在黑上会发灰） |
+| 单色与小尺寸 | 单色版的影子可以是三道横线（水里的倒影，印刷、雕刻都能做）；页签图标只留主体（16 像素里影子会糊） |
+| App 图标 | 连续曲率的圆角方块（圆角约为边长的 22.37%），晶体的主体约占高度的 46%，影子淡进底色。做 iOS 的 Liquid Glass 图标时分三层：底色、影子、主体 |
+| 字标 | 沿用页面上的衬线小写、字距放宽；字的 x 高度骑在晶体的地平线上 |
+| 动 | 色带在 −15° 与 −5° 之间缓缓摆动，16 秒一个来回，和 3D 的颜色一样慢；减少动态效果时不动 |
+
+为什么这样设计：
+
+- **不用星光。**星光（✨）几乎所有 AI 都在用；NN/g 与 Google 的研究都发现它意思含糊，还暗示“魔法”。我们的形是晶体和它的影子：产品里本来就有的东西，只属于我们。
+- **圆润。**Gemini 2025 年把星形的尖削圆，因为尖在小尺寸上会缩成细线，也更友好；这颗晶体本来就是圆润的（11.6）。
+- **光就是标志。**Apple Intelligence 的标志和 Siri 的边缘光是同一种光；这里的标志和 3D 的晶体是同一种极光、同一条地平线。
+- **温和的字标。**OpenAI 2025 年的改版把定制字体做得带一点不规则，让它更有人味；这里的字标是衬线小写，像一个名字。
+- **对称。**研究发现对称的标志让人觉得更稳、品质感更高；主体与影子上下对称。
+- **每个人一个。**MIT Media Lab 的动态标志有 4 万种组合，每个人一个；在这里，每个人的晶体（缩略图）就是他自己的标志，品牌标志是诞生时的那一颗。
+- **先黑白，后颜色。**渐变在 16 像素里会糊成一个平均色，所以先让形在单色、小尺寸下立住，再上渐变。
+
+接口：`ui/logo.js` 的 `logoSvg({ theme, mono, water: 'soft' | 'lines' | 'none', line, motion })` · `appIconSvg({ theme })` · `lockupSvg({ theme, mono })` · `faviconHref()`；页面上写 `data-logo='{"kind": "mark" | "icon" | "lockup", …}'`，没写 `theme` 的跟着页面的深浅走。`npm run brand` 导出 `docs/brand/*.svg`。
+
+参考：
+[Rise of the AI Sparkle Icon（Google Design）](https://design.google/library/ai-sparkle-icon-research-pozos-schmidt) ·
+[The Proliferation and Problem of the Sparkles Icon（NN/g）](https://www.nngroup.com/articles/ai-sparkles-icon-problem/) ·
+[Slate：为什么星光成了 AI 的符号](https://slate.com/technology/2025/12/artificial-intelligence-tools-icon-google-gemini-chatgpt-design.html) ·
+[Gemini 的新标志（9to5Google）](https://9to5google.com/2025/07/01/new-gemini-logo/) ·
+[Google’s new Gemini logo（Creative Bloq）](https://www.creativebloq.com/design/logos-icons/googles-new-gemini-logo-finally-feels-part-of-the-family) ·
+[Apple joins the race to find an AI icon（TechCrunch）](https://techcrunch.com/2024/06/15/apple-joins-the-race-to-find-an-ai-icon-that-makes-sense/) ·
+[OpenAI 的改版（Fast Company）](https://www.fastcompany.com/91273217/open-ai-rebrand-chat-gpt-logo) ·
+[Meta AI ring（Animade）](https://animade.tv/work/meta-ai-ring) ·
+[MIT Media Lab 的 4 万种标志（Fast Company）](https://www.fastcompany.com/1663378/mit-media-labs-brilliant-new-logo-has-40000-permutations-video) ·
+[The impact of logo symmetry on perceived product quality（PLOS ONE）](https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0317229) ·
+[Logo Scalability](https://www.logodesign.net/blog/logo-scalability/) ·
+[Crafting Liquid Glass app icons with Icon Composer](https://www.createwithswift.com/crafting-liquid-glass-app-icons-with-icon-composer/) ·
+[Aurora UI](https://uxdesign.cc/aurora-ui-new-visual-trend-for-2021-c763a7daa7e2)
+
 ## 12. 已知限制
 
 - 需要 WebGL2（顶点着色器里用 `inverse()` 把镜头与主光换到局部坐标）。颜色场最多认 8 类事。低端手机上帧率会下降；像素比已限制在 1.75–2，倒影渲染在半分辨率。
